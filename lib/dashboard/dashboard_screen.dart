@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
@@ -70,23 +69,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> initData() async {
     await loadProfileData();
+    if (!mounted) return;
+
     await fetchDashboardData();
-    setState(() {
-      isLoading = false;
-    });
+    if (!mounted) return;
+
+    setState(() => isLoading = false);
   }
 
   Future<String> getAuthToken() async {
     final prefs = await SharedPreferences.getInstance();
 
-    // 1️⃣ Secure storage (PRIMARY)
+    // ✅ Primary: Secure Storage (iOS + Android)
     final secureToken = await secureStorage.read(key: 'auth_token');
     if (secureToken != null && secureToken.isNotEmpty) {
       debugPrint("🔐 TOKEN FROM SECURE STORAGE");
       return secureToken;
     }
 
-    // 2️⃣ SharedPreferences fallback (ANDROID SAFETY)
+    // ✅ Fallback: SharedPreferences
     final prefsToken = prefs.getString('auth_token') ?? '';
     if (prefsToken.isNotEmpty) {
       debugPrint("🔐 TOKEN FROM SHARED PREFS");
@@ -106,83 +107,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
     studentsection = prefs.getString('section') ?? '';
   }
 
-  //     if (token.isEmpty) {
-  //       debugPrint("🚨 EMPTY TOKEN → FORCE LOGOUT");
-
-  //       await secureStorage.delete(key: 'auth_token');
-  //       await prefs.clear();
-
-  //       if (!mounted) return;
-  //       Navigator.pushAndRemoveUntil(
-  //         context,
-  //         MaterialPageRoute(builder: (_) => LoginPage()),
-  //         (_) => false,
-  //       );
-  //       return;
-  //     }
-
-  //     final response = await http.post(
-  //       Uri.parse('https://peps.apppro.in/api/student/dashboard'),
-  //       headers: {'Authorization': 'Bearer $token', 'Accept': 'application/json'},
-  //     );
-
-  //     debugPrint("🔵 DASHBOARD STATUS: ${response.statusCode}");
-  //     debugPrint("🔵 DASHBOARD BODY: ${response.body}");
-
-  //     if (response.statusCode == 200) {
-  //       final data = jsonDecode(response.body);
-  // fine = data['fine'] ?? 0;
-  //       dues = data['dues'] ?? 0;
-  //       payments = int.tryParse(data['payments'].toString()) ?? 0;
-
-  //       final rawDate = data['payment_date'] ?? '';
-  //       if (rawDate.isNotEmpty) {
-  //         try {
-  //           final dateObject = DateTime.parse(rawDate);
-  //           lastPaymentDate =
-  //               '${dateObject.day}/${dateObject.month}/${dateObject.year}';
-  //         } catch (_) {
-  //           lastPaymentDate = rawDate;
-  //         }
-  //       }
-
-  //       status = data['today_status'] ?? '';
-  //       subjects = data['subjects'] ?? 0;
-
-  //       attendance = {
-  //         'present': data['attendances']?['present'] ?? 0,
-  //         'absent': data['attendances']?['absent'] ?? 0,
-  //         'leave': data['attendances']?['leave'] ?? 0,
-  //         'half_day': data['attendances']?['half_day'] ?? 0,
-  //         'working_days': data['attendances']?['working_days'] ?? 0,
-  //       };
-
-  //       homeworks = List<Map<String, dynamic>>.from(data['homeworks'] ?? []);
-  //       notices = data['notices'] ?? [];
-  //       events = data['events'] ?? [];
-  //       siblings = data['siblings'] ?? [];
-
-  //       return;
-  //     }
-
-  //     if (response.statusCode == 401) {
-  //       debugPrint("🚫 DASHBOARD 401 → SESSION EXPIRED");
-
-  //       await secureStorage.delete(key: 'auth_token');
-  //       await prefs.clear();
-
-  //       if (!mounted) return;
-  //       Navigator.pushAndRemoveUntil(
-  //         context,
-  //         MaterialPageRoute(builder: (_) => LoginPage()),
-  //         (_) => false,
-  //       );
-  //     }
-  //   }
-
   Future<void> fetchDashboardData() async {
-    final prefs = await SharedPreferences.getInstance();
     final token = await getAuthToken();
+
+    if (token.isEmpty) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
+      await secureStorage.delete(key: 'auth_token');
+
+      if (!mounted) return;
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => LoginPage()),
+        (_) => false,
+      );
+      return;
+    }
 
     final response = await http.post(
       Uri.parse('https://peps.apppro.in/api/student/dashboard'),
@@ -192,53 +132,65 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
 
-      dues = data['dues'] ?? 0;
-      fine = data['fine'] ?? 0;
-      payments = int.tryParse(data['payments'].toString()) ?? 0;
-      final rawDate = data['payment_date'] ?? '';
-      if (rawDate.isNotEmpty) {
-        try {
-          final dateObject = DateTime.parse(rawDate);
-          lastPaymentDate =
-              '${dateObject.day}/${dateObject.month}/${dateObject.year}';
-        } catch (e) {
-          lastPaymentDate = rawDate;
-        }
-      } else {
-        lastPaymentDate = '';
-      }
-      status = data['today_status'] ?? '';
-      subjects = data['subjects'] ?? 0;
-      attendance = {
-        'present': data['attendances']?['present'] ?? 0,
-        'absent': data['attendances']?['absent'] ?? 0,
-        'leave': data['attendances']?['leave'] ?? 0,
-        'half_day': data['attendances']?['half_day'] ?? 0,
-        'working_days': data['attendances']?['working_days'] ?? 0,
-      };
-      homeworks = List<Map<String, dynamic>>.from(data['homeworks'] ?? []);
-      notices = data['notices'] ?? [];
-      events = data['events'] ?? [];
-      siblings = data['siblings'] ?? [];
-    } else {
-      if (response.statusCode == 401) {
-        await prefs.clear();
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => LoginPage()),
-          (route) => false,
+      setState(() {
+        dues = data['dues'] ?? 0;
+        fine = data['fine'] ?? 0;
+        payments = int.tryParse(data['payments'].toString()) ?? 0;
+        status = data['today_status'] ?? '';
+        subjects = data['subjects'] ?? 0;
+        attendance = {
+          'present': data['attendances']?['present'] ?? 0,
+          'absent': data['attendances']?['absent'] ?? 0,
+          'leave': data['attendances']?['leave'] ?? 0,
+          'half_day': data['attendances']?['half_day'] ?? 0,
+          'working_days': data['attendances']?['working_days'] ?? 0,
+        };
+        homeworks = List<Map<String, dynamic>>.from(data['homeworks'] ?? []);
+        notices = data['notices'] ?? [];
+        events = data['events'] ?? [];
+        siblings = data['siblings'] ?? [];
+      });
+    } else if (response.statusCode == 401) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
+      await secureStorage.delete(key: 'auth_token');
+
+      if (!mounted) return;
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => LoginPage()),
+        (_) => false,
+      );
+    }
+  }
+
+  Future<void> handleLogout() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = await getAuthToken();
+
+    if (token.isNotEmpty) {
+      try {
+        await http.post(
+          Uri.parse('https://peps.apppro.in/api/logout'),
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Accept': 'application/json',
+          },
         );
-
-        return;
+      } catch (e) {
+        debugPrint("Logout API error: $e");
       }
-      print('❌ Dashboard fetch failed: ${response.statusCode}');
-    }
-    for (final key in prefs.getKeys()) {
-      print('$key = ${prefs.get(key)}');
     }
 
-    final fcmToken = await FirebaseMessaging.instance.getToken();
-    print("🟢 FCM Device Token: $fcmToken");
+    await prefs.clear();
+    await secureStorage.delete(key: 'auth_token');
+
+    if (!mounted) return;
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => LoginPage()),
+      (_) => false,
+    );
   }
 
   void _showSiblingPopup(BuildContext context) {
@@ -301,8 +253,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 elevation: 2,
                 child: ListTile(
                   leading: CircleAvatar(
+                    backgroundColor: Colors.grey.shade200,
                     backgroundImage: NetworkImage(photoUrl),
+                    onBackgroundImageError: (_, __) {
+                      debugPrint("⚠️ Sibling photo missing");
+                    },
+                    child: const Icon(Icons.person, color: Colors.grey),
                   ),
+
                   title: Text(
                     name,
                     style: const TextStyle(fontWeight: FontWeight.w600),
@@ -377,31 +335,56 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _shiftLogin(String studentId) async {
     if (!mounted) return;
+
     try {
-      // Step 1: Get SharedPreferences instance
       final prefs = await SharedPreferences.getInstance();
 
-      // Step 2: Get saved token before making request
-      // final token = prefs.getString('token') ?? '';
+      // ✅ ALWAYS get token from helper
       final token = await getAuthToken();
-      print('🔑 Using Token: $token');
+      debugPrint('🔑 Using Token: $token');
 
-      // Step 3: Prepare API request
+      // 🚨 Safety: empty token
+      if (token.isEmpty) {
+        await prefs.clear();
+        await secureStorage.delete(key: 'auth_token');
+
+        if (!mounted) return;
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => LoginPage()),
+          (_) => false,
+        );
+        return;
+      }
+
+      // ✅ API request
       final url = Uri.parse('https://peps.apppro.in/api/student/shift_login');
-      final headers = {
-        'Accept': 'application/json',
-        'Authorization': 'Bearer $token',
-      };
-      final body = {'id': studentId};
-      print('📤 Request Body: $body');
+      final response = await http.post(
+        url,
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: {'id': studentId},
+      );
 
-      // Step 4: Send request
-      final response = await http.post(url, headers: headers, body: body);
+      debugPrint('📥 Response Status: ${response.statusCode}');
+      debugPrint('📥 Response Body: ${response.body}');
 
-      print('📥 Response Status: ${response.statusCode}');
-      print('📥 Response Body: ${response.body}');
+      // 🚨 Unauthorized → force logout
+      if (response.statusCode == 401) {
+        await prefs.clear();
+        await secureStorage.delete(key: 'auth_token');
 
-      // Step 5: Handle non-200 responses
+        if (!mounted) return;
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => LoginPage()),
+          (_) => false,
+        );
+        return;
+      }
+
       if (response.statusCode != 200) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -410,26 +393,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return;
       }
 
-      // Step 6: Decode JSON
-      dynamic data;
-      try {
-        data = json.decode(response.body);
-      } catch (e) {
-        print('❌ Failed to decode response as JSON');
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invalid server response')),
-        );
-        return;
-      }
+      // ✅ Decode JSON
+      final data = jsonDecode(response.body);
 
-      // Step 7: Handle response data
       if (data['status'] == true) {
-        print('✅ Shift Login Successful for ID: $studentId');
+        debugPrint('✅ Shift Login Successful for ID: $studentId');
 
-        // Step 8: Store new login info & token
+        // ✅ SAVE TOKEN (ONLY auth_token)
         await secureStorage.write(key: 'auth_token', value: data['token']);
-        await prefs.setString('authToken', data['token'] ?? '');
+        await prefs.setString('auth_token', data['token']);
+
+        // ✅ SAVE PROFILE DATA
         await prefs.setString('user_type', data['user_type'] ?? '');
         await prefs.setString(
           'student_name',
@@ -449,28 +423,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
           data['profile']['student_photo'] ?? '',
         );
 
-        print('💾 New Token Saved: ${data['token']}');
+        debugPrint('💾 New Token Saved: ${data['token']}');
 
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Switched student successfully')),
         );
 
-        // Navigate fresh to dashboard/home
+        // ✅ Fresh dashboard
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (_) => const DashboardScreen()),
           (_) => false,
         );
       } else {
-        print('❌ Shift login failed: ${data['message']}');
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(data['message'] ?? 'Login failed')),
         );
       }
     } catch (e) {
-      print('🚨 Exception in _shiftLogin: $e');
+      debugPrint('🚨 Exception in _shiftLogin: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
@@ -643,16 +616,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     const url = 'https://peps.apppro.in/api/student/payment/initiate';
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final authToken = prefs.getString('token') ?? '';
-
+      final authToken = await getAuthToken();
+      // 🚨 Safety check
       if (authToken.isEmpty) {
-        print(
-          'ERROR: Auth token not found in SharedPreferences. Cannot proceed.',
-        );
+        debugPrint('❌ Auth token missing → cannot initiate payment');
         return null;
       }
-      print('DEBUG: Auth Token successfully retrieved.');
 
       // 2. Body Data Preparation (FormData format)
       final bodyData = {'amount': amount.toString(), 'fine': fine.toString()};
@@ -717,11 +686,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final url = 'https://peps.apppro.in/api/student/payment/status/$refNo';
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final authToken = prefs.getString('token') ?? '';
-
+      final authToken = await getAuthToken();
+      // 🚨 Safety check
       if (authToken.isEmpty) {
-        print('Error: Auth token not found in SharedPreferences.');
+        debugPrint('❌ Auth token missing → cannot check payment');
         return 'error';
       }
 
@@ -794,6 +762,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               studentPhoto: studentPhoto,
               studentClass: studentClass,
               studentsection: studentsection,
+              onLogout: handleLogout,
             ),
       appBar: AppBar(
         iconTheme: const IconThemeData(color: Colors.white),
@@ -839,104 +808,109 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         backgroundColor: Colors.deepPurple,
       ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      FeePayCard(
-                        dues: dues,
-                        fine: fine,
-                        onCardTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => FeeDetailsPage()),
+      body: SafeArea(
+        child: isLoading
+            ? const Center(child: CircularProgressIndicator(strokeWidth: 3))
+            : SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        FeePayCard(
+                          dues: dues,
+                          fine: fine,
+                          onCardTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => FeeDetailsPage()),
+                          ),
+                          onPayNowTap: () => _showPaymentConfirmationDialog(
+                            context,
+                            dues,
+                            fine,
+                          ),
                         ),
-                        onPayNowTap: () =>
-                            _showPaymentConfirmationDialog(context, dues, fine),
-                      ),
 
-                      GestureDetector(
-                        child: DashboardCard(
-                          title: 'Last Pay',
-                          value: payments.toString(),
-                          borderColor: Colors.green,
-                          backgroundColor: Colors.green.shade50,
-                          textColor: Colors.green,
-                          date: lastPaymentDate,
+                        GestureDetector(
+                          child: DashboardCard(
+                            title: 'Last Pay',
+                            value: payments.toString(),
+                            borderColor: Colors.green,
+                            backgroundColor: Colors.green.shade50,
+                            textColor: Colors.green,
+                            date: lastPaymentDate,
+                          ),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => PaymentPage()),
+                          ),
                         ),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => PaymentPage()),
+                        GestureDetector(
+                          child: DashboardCard(
+                            title: 'Subjects',
+                            value: subjects.toString(),
+                            borderColor: Colors.blue,
+                            backgroundColor: Colors.blue.shade50,
+                            textColor: Colors.blue,
+                          ),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => SubjectsPage()),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 30),
+                    GestureDetector(
+                      child: AttendanceCard(
+                        title: "Today's Attendance",
+                        place: "School",
+                        status: status,
+                        icon: Icons.school,
+                      ),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => AttendanceAnalyticsPage(),
                         ),
                       ),
-                      GestureDetector(
-                        child: DashboardCard(
-                          title: 'Subjects',
-                          value: subjects.toString(),
-                          borderColor: Colors.blue,
-                          backgroundColor: Colors.blue.shade50,
-                          textColor: Colors.blue,
-                        ),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => SubjectsPage()),
-                        ),
+                    ),
+                    const SizedBox(height: 10),
+                    // Container(
+                    //   height: 225,
+                    //   padding: const EdgeInsets.all(8),
+                    //   decoration: BoxDecoration(
+                    //     color: Colors.white,
+                    //     borderRadius: BorderRadius.circular(12),
+                    //     border: Border.all(color: Colors.deepPurple.shade100),
+                    //     boxShadow: [
+                    //       BoxShadow(color: Colors.grey.shade200, blurRadius: 6),
+                    //     ],
+                    // ),
+                    // child: AttendancePieChart(
+                    //   present: attendance['present'] ?? 0,
+                    //   absent: attendance['absent'] ?? 0,
+                    //   leave: attendance['leave'] ?? 0,
+                    //   halfDay: attendance['half_day'] ?? 0,
+                    //   workingDays: attendance['working_days'] ?? 0,
+                    // ),
+                    // ),
+                    const SizedBox(height: 10),
+                    buildRecentHomeworks(context, homeworks),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      height: 350,
+                      child: NoticesEventsToggle(
+                        initialNotices: notices,
+                        initialEvents: events,
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 30),
-                  GestureDetector(
-                    child: AttendanceCard(
-                      title: "Today's Attendance",
-                      place: "School",
-                      status: status,
-                      icon: Icons.school,
                     ),
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => AttendanceAnalyticsPage(),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  // Container(
-                  //   height: 225,
-                  //   padding: const EdgeInsets.all(8),
-                  //   decoration: BoxDecoration(
-                  //     color: Colors.white,
-                  //     borderRadius: BorderRadius.circular(12),
-                  //     border: Border.all(color: Colors.deepPurple.shade100),
-                  //     boxShadow: [
-                  //       BoxShadow(color: Colors.grey.shade200, blurRadius: 6),
-                  //     ],
-                  // ),
-                  // child: AttendancePieChart(
-                  //   present: attendance['present'] ?? 0,
-                  //   absent: attendance['absent'] ?? 0,
-                  //   leave: attendance['leave'] ?? 0,
-                  //   halfDay: attendance['half_day'] ?? 0,
-                  //   workingDays: attendance['working_days'] ?? 0,
-                  // ),
-                  // ),
-                  const SizedBox(height: 10),
-                  buildRecentHomeworks(context, homeworks),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    height: 350,
-                    child: NoticesEventsToggle(
-                      initialNotices: notices,
-                      initialEvents: events,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
+      ),
     );
   }
 }
@@ -1239,6 +1213,7 @@ class LeftSidebarMenu extends StatelessWidget {
   final String studentPhoto;
   final String studentClass;
   final String studentsection;
+  final VoidCallback onLogout;
 
   const LeftSidebarMenu({
     super.key,
@@ -1246,6 +1221,7 @@ class LeftSidebarMenu extends StatelessWidget {
     required this.studentPhoto,
     required this.studentClass,
     required this.studentsection,
+    required this.onLogout,
   });
 
   @override
@@ -1263,11 +1239,18 @@ class LeftSidebarMenu extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 26,
+                    backgroundColor: Colors.grey.shade200,
                     backgroundImage: studentPhoto.isNotEmpty
                         ? NetworkImage(studentPhoto)
-                        : const AssetImage('assets/images/default_avatar.png')
-                              as ImageProvider,
+                        : null,
+                    child: studentPhoto.isEmpty
+                        ? const Icon(Icons.person, size: 30, color: Colors.grey)
+                        : null,
+                    onBackgroundImageError: (_, __) {
+                      debugPrint("⚠️ Student photo not found, showing default");
+                    },
                   ),
+
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -1466,60 +1449,19 @@ class LeftSidebarMenu extends StatelessWidget {
               onTap: () {
                 showDialog(
                   context: context,
-                  builder: (context) => AlertDialog(
-                    title: Text("Logout"),
-                    content: Text("Are you sure you want to logout?"),
+                  builder: (dialogContext) => AlertDialog(
+                    title: const Text("Logout"),
+                    content: const Text("Are you sure you want to logout?"),
                     actions: [
                       TextButton(
-                        child: Text("Cancel"),
-                        onPressed: () => Navigator.pop(context),
+                        child: const Text("Cancel"),
+                        onPressed: () => Navigator.pop(dialogContext),
                       ),
                       TextButton(
-                        child: Text("Logout"),
-                        onPressed: () async {
-                          final prefs = await SharedPreferences.getInstance();
-                          final token = prefs.getString('token') ?? '';
-
-                          final response = await http.post(
-                            Uri.parse('https://peps.apppro.in/api/logout'),
-                            headers: {
-                              'Authorization': 'Bearer $token',
-                              'Accept': 'application/json',
-                            },
-                          );
-
-                          print("🔐 Logout API Response: ${response.body}");
-
-                          if (response.statusCode == 200) {
-                            final data = jsonDecode(response.body);
-
-                            if (data['status'] == true ||
-                                data['message'] == 'Logged out') {
-                              await prefs.clear();
-
-                              Navigator.pushAndRemoveUntil(
-                                context,
-                                MaterialPageRoute(builder: (_) => LoginPage()),
-                                (route) => false,
-                              );
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    "Logout failed: ${data['message']}",
-                                  ),
-                                ),
-                              );
-                            }
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  "Logout failed. Please try again.",
-                                ),
-                              ),
-                            );
-                          }
+                        child: const Text("Logout"),
+                        onPressed: () {
+                          Navigator.pop(dialogContext); // close dialog
+                          onLogout(); // ✅ CALL DASHBOARD FUNCTION
                         },
                       ),
                     ],
