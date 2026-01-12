@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:prime_school/auth_helper.dart';
+import 'package:prime_school/api_service.dart';
 
 class TeacherAttendanceScreen extends StatefulWidget {
   const TeacherAttendanceScreen({super.key});
@@ -72,10 +72,9 @@ class _TeacherAttendanceScreenState extends State<TeacherAttendanceScreen> {
 
     try {
       final formattedMonth = DateFormat('yyyy-MM').format(_focusedMonth);
-
-      final res = await AuthHelper.post(
+      final res = await ApiService.post(
         context,
-        'https://peps.apppro.in/api/teacher/attendance',
+        "/teacher/attendance",
         body: {'Month': formattedMonth},
       );
 
@@ -128,7 +127,7 @@ class _TeacherAttendanceScreenState extends State<TeacherAttendanceScreen> {
           'My Attendance',
           style: TextStyle(color: Colors.white),
         ),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: AppColors.primary,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: Stack(
@@ -146,7 +145,7 @@ class _TeacherAttendanceScreenState extends State<TeacherAttendanceScreen> {
               child: Container(
                 color: Colors.black.withOpacity(0.1),
                 child: const Center(
-                  child: CircularProgressIndicator(color: Colors.deepPurple),
+                  child: CircularProgressIndicator(color: AppColors.primary),
                 ),
               ),
             ),
@@ -181,7 +180,7 @@ class _TeacherAttendanceScreenState extends State<TeacherAttendanceScreen> {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: Colors.deepPurple,
+              color: AppColors.primary,
             ),
           ),
           const SizedBox(height: 12),
@@ -249,7 +248,7 @@ class _TeacherAttendanceScreenState extends State<TeacherAttendanceScreen> {
             decoration: const BoxDecoration(
               borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
               gradient: LinearGradient(
-                colors: [Color(0xFF6A1B9A), Color(0xFF8E24AA)],
+                colors: [AppColors.primary, AppColors.primary],
               ),
             ),
             child: Row(

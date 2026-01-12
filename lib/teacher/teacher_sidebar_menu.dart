@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
-import 'package:prime_school/connect_teacher/teacher_chat_screen.dart';
-import 'package:prime_school/syllabus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:prime_school/api_service.dart';
 import 'package:prime_school/login_page.dart';
 import 'package:prime_school/alert/stu_alert.dart';
+import 'package:prime_school/connect_teacher/teacher_chat_list.dart';
 import 'package:prime_school/payment/payment_teacher_screen.dart';
 import 'package:prime_school/school_info_page.dart';
+import 'package:prime_school/syllabus/syllabus.dart';
 import 'package:prime_school/teacher/AssignMarksPage.dart';
 import 'package:prime_school/teacher/AssignSkillsPage.dart';
 import 'package:prime_school/teacher/ResultcardPage.dart';
@@ -56,7 +57,7 @@ class _TeacherSidebarMenuState extends State<TeacherSidebarMenu> {
     if (photo.isEmpty) return '';
     return photo.startsWith('http')
         ? photo
-        : 'https://peps.apppro.in/$photo';
+        : 'https://school.edusathi.in/$photo';
   }
 
   void _navigate(BuildContext context, Widget page) {
@@ -71,27 +72,24 @@ class _TeacherSidebarMenuState extends State<TeacherSidebarMenu> {
 
   Future<void> _logout(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
-
-    // ✅ FIX: correct token key
     final token = prefs.getString('auth_token') ?? '';
 
     try {
       if (token.isNotEmpty) {
         await http.post(
-          Uri.parse('https://peps.apppro.in/api/logout'),
+          Uri.parse('https://school.edusathi.in/api/logout'),
           headers: {
             'Authorization': 'Bearer $token',
             'Accept': 'application/json',
           },
         );
       }
-    } catch (_) {
-      // ignore API failure, still logout locally
-    }
+    } catch (_) {}
 
-    // ✅ FIX: clear BOTH storages
     await prefs.clear();
-    await _secureStorage.delete(key: 'auth_token');
+    await prefs.setBool('is_logged_in', false);
+
+    await _secureStorage.deleteAll();
 
     if (!mounted) return;
 
@@ -108,7 +106,7 @@ class _TeacherSidebarMenuState extends State<TeacherSidebarMenu> {
       child: ListView(
         children: [
           Container(
-            color: Colors.deepPurple,
+            color: AppColors.primary,
             height: 130,
             padding: const EdgeInsets.all(12),
             child: Row(

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:pie_chart/pie_chart.dart';
 
+import '../api_service.dart';
+
 class AttendancePieChart extends StatelessWidget {
   final int present;
   final int absent;
@@ -27,8 +29,8 @@ class AttendancePieChart extends StatelessWidget {
     double chartRadius = screenWidth < 360
         ? baseChartRadius * 0.85
         : screenWidth > 600
-        ? baseChartRadius * 1.2
-        : baseChartRadius;
+            ? baseChartRadius * 1.2
+            : baseChartRadius;
 
     final Map<String, double> dataMap = {
       "Present": present.toDouble(),
@@ -68,7 +70,7 @@ class AttendancePieChart extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
-                    color: Colors.deepPurple,
+                    color: AppColors.primary,
                   ),
                 ),
                 TextSpan(

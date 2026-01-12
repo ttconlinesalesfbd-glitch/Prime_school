@@ -1,9 +1,7 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:path_provider/path_provider.dart';
-import 'package:prime_school/auth_helper.dart';
+
+import 'package:prime_school/api_service.dart';
 
 class SchoolInfoPage extends StatefulWidget {
   @override
@@ -26,10 +24,7 @@ class _SchoolInfoPageState extends State<SchoolInfoPage> {
 
   Future<void> fetchSchoolInfo() async {
     try {
-      final response = await AuthHelper.post(
-        context,
-        'https://peps.apppro.in/api/school',
-      );
+      final response = await ApiService.post(context, '/school');
 
       if (response == null) {
         // auto-logout already handled
@@ -78,34 +73,29 @@ class _SchoolInfoPageState extends State<SchoolInfoPage> {
     try {
       setState(() => isDownloading = true);
 
-      final normalizedUrl = qrCode.startsWith('http')
-          ? qrCode
-          : 'https://peps.apppro.in/$qrCode';
+      final fileUrl = ApiService.resolveMediaUrl(qrCode);
+      final fileName = 'School_QR_${DateTime.now().millisecondsSinceEpoch}.png';
 
-      final response = await http.get(Uri.parse(normalizedUrl));
-      if (response.statusCode != 200) {
-        throw Exception("Download failed");
-      }
+      debugPrint("📎 QR DOWNLOAD URL: $fileUrl");
 
-      final dir = await getApplicationDocumentsDirectory();
-      final filePath =
-          '${dir.path}/School_QR_${DateTime.now().millisecondsSinceEpoch}.png';
-
-      final file = File(filePath);
-      await file.writeAsBytes(response.bodyBytes);
-
-      if (!mounted) return;
-
-      setState(() => isDownloading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("✅ QR Code saved to Documents")),
+      final file = await ApiService.downloadFile(
+        context,
+        fileUrl: fileUrl,
+        fileName: fileName,
       );
-    } catch (e) {
+
+      if (file != null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("✅ QR downloaded successfully")),
+        );
+      }
+    } catch (_) {
       if (!mounted) return;
-      setState(() => isDownloading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("❌ Failed to download QR Code")),
       );
+    } finally {
+      if (mounted) setState(() => isDownloading = false);
     }
   }
 
@@ -113,9 +103,7 @@ class _SchoolInfoPageState extends State<SchoolInfoPage> {
     if (url.isEmpty) {
       return const AssetImage("assets/images/logo.png");
     }
-    return NetworkImage(
-      url.startsWith('http') ? url : 'https://peps.apppro.in/$url',
-    );
+    return NetworkImage(ApiService.resolveMediaUrl(url));
   }
 
   @override
@@ -126,12 +114,14 @@ class _SchoolInfoPageState extends State<SchoolInfoPage> {
           "School Information",
           style: TextStyle(color: Colors.white),
         ),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: AppColors.primary,
         leading: const BackButton(color: Colors.white),
       ),
-      backgroundColor: Colors.deepPurple[50],
+      backgroundColor: AppColors.primary[50],
       body: isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            )
           : SingleChildScrollView(
               child: Card(
                 margin: const EdgeInsets.all(16),
@@ -159,7 +149,7 @@ class _SchoolInfoPageState extends State<SchoolInfoPage> {
                             style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
-                              color: Colors.deepPurple,
+                              color: AppColors.primary,
                             ),
                           ),
                         ],
@@ -216,7 +206,7 @@ class _SchoolInfoPageState extends State<SchoolInfoPage> {
                           "Payment QR Code",
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: Colors.deepPurple,
+                            color: AppColors.primary,
                             fontSize: 16,
                           ),
                         ),
@@ -246,7 +236,7 @@ class _SchoolInfoPageState extends State<SchoolInfoPage> {
                             style: const TextStyle(color: Colors.white),
                           ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.deepPurple,
+                            backgroundColor: AppColors.primary,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(30),
                             ),
