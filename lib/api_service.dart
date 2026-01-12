@@ -1,16 +1,16 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'login_page.dart';
 
 class ApiService {
   /// 🔥 CHANGE ONLY HERE
   static const String baseUrl = "https://peps.apppro.in/api";
+  static const String fileBaseUrl = "https://peps.apppro.in/";
 
   /// ⏱ Timeout (iOS safe)
   static const Duration timeout = Duration(seconds: 20);
@@ -154,40 +154,43 @@ class ApiService {
     }
   }
 
-  static Future<File?> downloadFile(
-    BuildContext context, {
-    required String fileUrl,
-    required String fileName,
-  }) async {
-    try {
-      final response = await http
-          .get(Uri.parse(fileUrl)) // ❌ NO HEADERS
-          .timeout(timeout);
+  static Future<List<int>?> downloadFileBytes(
+  BuildContext context,
+  String fileUrl,
+) async {
+  final token = await _getToken();
 
-      debugPrint("📥 STATUS: ${response.statusCode}");
-
-      if (response.statusCode != 200 || response.bodyBytes.isEmpty) {
-        throw Exception("Download failed");
-      }
-
-      if (Platform.isAndroid) {
-        final dir = Directory('/storage/emulated/0/Download');
-        final file = File('${dir.path}/$fileName');
-        await file.writeAsBytes(response.bodyBytes, flush: true);
-        return file;
-      }
-
-      if (Platform.isIOS) {
-        final dir = await getApplicationDocumentsDirectory();
-        final file = File('${dir.path}/$fileName');
-        await file.writeAsBytes(response.bodyBytes, flush: true);
-        return file;
-      }
-    } catch (e) {
-      debugPrint("❌ DOWNLOAD ERROR: $e");
-    }
+  if (token.isEmpty) {
+    await forceLogout(context);
     return null;
   }
+
+  try {
+    final response = await http
+        .get(
+          Uri.parse(fileUrl),
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Accept': '*/*',
+          },
+        )
+        .timeout(timeout);
+
+    if (response.statusCode == 401) {
+      await forceLogout(context);
+      return null;
+    }
+
+    if (response.statusCode != 200 || response.bodyBytes.isEmpty) {
+      return null;
+    }
+
+    return response.bodyBytes;
+  } on TimeoutException {
+    debugPrint("⏱ DOWNLOAD TIMEOUT");
+    return null;
+  }
+}
 
   // ================= SAVE SESSIONS =================
   static Future<void> saveSession(Map<String, dynamic> data) async {

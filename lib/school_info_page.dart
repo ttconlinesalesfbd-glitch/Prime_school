@@ -1,6 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
-
+import 'package:http/http.dart' as http;
+import 'package:open_file/open_file.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:prime_school/api_service.dart';
 
 class SchoolInfoPage extends StatefulWidget {
@@ -73,23 +76,47 @@ class _SchoolInfoPageState extends State<SchoolInfoPage> {
     try {
       setState(() => isDownloading = true);
 
-      final fileUrl = ApiService.resolveMediaUrl(qrCode);
+      final normalizedUrl = qrCode.startsWith('http')
+          ? qrCode
+          : '${ApiService.fileBaseUrl}$qrCode';
+
+      debugPrint("🌐 QR DOWNLOAD URL: $normalizedUrl");
+
+      final response = await http.get(Uri.parse(normalizedUrl));
+      if (response.statusCode != 200 || response.bodyBytes.isEmpty) {
+        throw Exception("Download failed");
+      }
+
       final fileName = 'School_QR_${DateTime.now().millisecondsSinceEpoch}.png';
 
-      debugPrint("📎 QR DOWNLOAD URL: $fileUrl");
+      // ================= ANDROID =================
+      if (Platform.isAndroid) {
+        final downloadsDir = Directory('/storage/emulated/0/Download');
+        final file = File('${downloadsDir.path}/$fileName');
 
-      final file = await ApiService.downloadFile(
-        context,
-        fileUrl: fileUrl,
-        fileName: fileName,
-      );
+        await file.writeAsBytes(response.bodyBytes, flush: true);
 
-      if (file != null && mounted) {
+        // ✅ PREVIEW OPEN
+        await OpenFile.open(file.path);
+
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("✅ QR downloaded successfully")),
+          const SnackBar(content: Text("📥 Downloaded & preview opened")),
         );
       }
-    } catch (_) {
+
+      // ================= iOS =================
+      if (Platform.isIOS) {
+        final dir = await getApplicationDocumentsDirectory();
+        final file = File('${dir.path}/$fileName');
+
+        await file.writeAsBytes(response.bodyBytes, flush: true);
+
+        // ✅ PREVIEW OPEN
+        await OpenFile.open(file.path);
+      }
+    } catch (e) {
+      debugPrint("❌ QR download error: $e");
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("❌ Failed to download QR Code")),
@@ -103,7 +130,14 @@ class _SchoolInfoPageState extends State<SchoolInfoPage> {
     if (url.isEmpty) {
       return const AssetImage("assets/images/logo.png");
     }
-    return NetworkImage(ApiService.resolveMediaUrl(url));
+
+    final imageUrl = url.startsWith('http')
+        ? url
+        : '${ApiService.fileBaseUrl}$url';
+
+    debugPrint("🖼️ IMAGE URL: $imageUrl");
+
+    return NetworkImage(imageUrl);
   }
 
   @override
