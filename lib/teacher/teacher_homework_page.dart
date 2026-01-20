@@ -31,10 +31,7 @@ class _TeacherHomeworkPageState extends State<TeacherHomeworkPage> {
     setState(() => isLoading = true);
 
     try {
-      final response = await ApiService.post(
-        context,
-        '/teacher/homework',
-      );
+      final response = await ApiService.post(context, '/teacher/homework');
 
       // 🔐 token expired → AuthHelper already logout kara dega
       if (response == null || !mounted) {
@@ -85,61 +82,62 @@ class _TeacherHomeworkPageState extends State<TeacherHomeworkPage> {
   }
 
   // ---------------- FILE DOWNLOAD (IOS + ANDROID SAFE) ----------------
- Future<void> downloadFile(BuildContext context, String attachmentPath) async {
-  try {
-    final String fileUrl = attachmentPath.startsWith('http')
-        ? attachmentPath
-        : 'https://s3.ap-south-1.amazonaws.com/'
-            'school.edusathi.in/homeworks/$attachmentPath';
+  Future<void> downloadFile(BuildContext context, String attachmentPath) async {
+    try {
+      final String fileUrl = attachmentPath.startsWith('http')
+          ? attachmentPath
+          : ApiService.homeworkAttachment(attachmentPath);
 
-    debugPrint("⬇️ Download URL: $fileUrl");
+      debugPrint("⬇️ Download URL: $fileUrl");
 
-    final response = await http
-        .get(Uri.parse(fileUrl))
-        .timeout(const Duration(seconds: 30));
+      final response = await http
+          .get(Uri.parse(fileUrl))
+          .timeout(const Duration(seconds: 30));
 
-    if (response.statusCode != 200 || response.bodyBytes.isEmpty) {
-      throw Exception("Download failed");
-    }
+      if (response.statusCode != 200 || response.bodyBytes.isEmpty) {
+        throw Exception("Download failed");
+      }
 
-    final String fileName = Uri.parse(fileUrl).pathSegments.last;
+      final String fileName = Uri.parse(fileUrl).pathSegments.last;
 
-    // ================= ANDROID =================
-    if (Platform.isAndroid) {
-      // ✅ REAL Downloads folder (user visible)
-      final Directory downloadsDir =
-          Directory('/storage/emulated/0/Download');
+      // ================= ANDROID =================
+      if (Platform.isAndroid) {
+        // ✅ REAL Downloads folder (user visible)
+        final Directory downloadsDir = Directory(
+          '/storage/emulated/0/Download',
+        );
 
-      final String filePath = '${downloadsDir.path}/$fileName';
-      final File file = File(filePath);
+        final String filePath = '${downloadsDir.path}/$fileName';
+        final File file = File(filePath);
 
-      await file.writeAsBytes(response.bodyBytes, flush: true);
+        await file.writeAsBytes(response.bodyBytes, flush: true);
+          await OpenFile.open(filePath);
 
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("📥 File saved to Downloads folder")),
+        );
+      }
+
+      // ================= iOS =================
+      if (Platform.isIOS) {
+        final Directory dir = await getApplicationDocumentsDirectory();
+        final String filePath = '${dir.path}/$fileName';
+
+        final File file = File(filePath);
+        await file.writeAsBytes(response.bodyBytes, flush: true);
+
+        if (!context.mounted) return;
+        await OpenFile.open(filePath); // Files app
+      }
+    } catch (e) {
+      debugPrint("❌ Download error: $e");
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("📥 File saved to Downloads folder")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Download failed")));
     }
-
-    // ================= iOS =================
-    if (Platform.isIOS) {
-      final Directory dir = await getApplicationDocumentsDirectory();
-      final String filePath = '${dir.path}/$fileName';
-
-      final File file = File(filePath);
-      await file.writeAsBytes(response.bodyBytes, flush: true);
-
-      if (!context.mounted) return;
-      await OpenFile.open(filePath); // Files app
-    }
-  } catch (e) {
-    debugPrint("❌ Download error: $e");
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Download failed")),
-    );
   }
-}
 
   // ---------------- UI ----------------
   @override
@@ -151,7 +149,9 @@ class _TeacherHomeworkPageState extends State<TeacherHomeworkPage> {
         foregroundColor: Colors.white,
       ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary),)
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            )
           : homeworks.isEmpty
           ? const Center(child: Text('No homework found.'))
           : ListView.builder(

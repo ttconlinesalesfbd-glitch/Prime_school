@@ -155,42 +155,39 @@ class ApiService {
   }
 
   static Future<List<int>?> downloadFileBytes(
-  BuildContext context,
-  String fileUrl,
-) async {
-  final token = await _getToken();
+    BuildContext context,
+    String fileUrl,
+  ) async {
+    final token = await _getToken();
 
-  if (token.isEmpty) {
-    await forceLogout(context);
-    return null;
-  }
-
-  try {
-    final response = await http
-        .get(
-          Uri.parse(fileUrl),
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Accept': '*/*',
-          },
-        )
-        .timeout(timeout);
-
-    if (response.statusCode == 401) {
+    if (token.isEmpty) {
       await forceLogout(context);
       return null;
     }
 
-    if (response.statusCode != 200 || response.bodyBytes.isEmpty) {
+    try {
+      final response = await http
+          .get(
+            Uri.parse(fileUrl),
+            headers: {'Authorization': 'Bearer $token', 'Accept': '*/*'},
+          )
+          .timeout(timeout);
+
+      if (response.statusCode == 401) {
+        await forceLogout(context);
+        return null;
+      }
+
+      if (response.statusCode != 200 || response.bodyBytes.isEmpty) {
+        return null;
+      }
+
+      return response.bodyBytes;
+    } on TimeoutException {
+      debugPrint("⏱ DOWNLOAD TIMEOUT");
       return null;
     }
-
-    return response.bodyBytes;
-  } on TimeoutException {
-    debugPrint("⏱ DOWNLOAD TIMEOUT");
-    return null;
   }
-}
 
   // ================= SAVE SESSIONS =================
   static Future<void> saveSession(Map<String, dynamic> data) async {
@@ -247,7 +244,8 @@ class ApiService {
   }
 
   static String homeworkAttachment(String fileName) {
-    return "$s3Base/homeworks/$fileName";
+    if (fileName.startsWith('http')) return fileName;
+    return "$s3Base/$fileName";
   }
 }
 

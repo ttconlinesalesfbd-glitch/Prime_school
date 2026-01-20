@@ -149,6 +149,7 @@ class TeacherRecentHomeworks extends StatelessWidget {
 
         final file = File(filePath);
         await file.writeAsBytes(response.bodyBytes, flush: true);
+        await OpenFile.open(filePath);
 
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(

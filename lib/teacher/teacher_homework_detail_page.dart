@@ -46,6 +46,7 @@ class TeacherHomeworkDetailPage extends StatelessWidget {
         final File file = File(filePath);
 
         await file.writeAsBytes(response.bodyBytes, flush: true);
+        await OpenFile.open(filePath);
 
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -138,9 +139,7 @@ class TeacherHomeworkDetailPage extends StatelessWidget {
                       String fileUrl = homework['Attachment'].toString();
 
                       if (!fileUrl.startsWith('http')) {
-                        fileUrl =
-                            'https://s3.ap-south-1.amazonaws.com/'
-                            'school.edusathi.in/homeworks/$fileUrl';
+                        fileUrl = ApiService.homeworkAttachment(fileUrl);
                       }
 
                       debugPrint("📎 TEACHER HW DETAIL DOWNLOAD URL: $fileUrl");
