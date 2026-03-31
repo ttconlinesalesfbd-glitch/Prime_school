@@ -35,9 +35,6 @@ class ExamSchedulePage extends StatefulWidget {
 }
 
 class _ExamSchedulePageState extends State<ExamSchedulePage> {
-
-
-
   List<Exam> exams = [];
   Exam? selectedExam;
   List<ExamScheduleItem> scheduleContent = [];

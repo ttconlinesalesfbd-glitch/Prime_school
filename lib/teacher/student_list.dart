@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:prime_school/api_service.dart';
 
-
 class StudentListPage extends StatefulWidget {
   const StudentListPage({super.key});
 
@@ -29,10 +28,7 @@ class _StudentListPageState extends State<StudentListPage> {
     setState(() => _isLoading = true);
 
     try {
-      final response = await ApiService.post(
-        context,
-        '/teacher/student/list',
-      );
+      final response = await ApiService.post(context, '/teacher/student/list');
 
       if (response == null) {
         debugPrint("🔴 RESPONSE NULL (TOKEN EXPIRED)");

@@ -60,10 +60,7 @@ class _ConnectWithUsPageState extends State<ConnectWithUsPage> {
     if (!mounted) return;
 
     try {
-      final res = await ApiService.post(
-        context,
-        "/student/messages",
-      );
+      final res = await ApiService.post(context, "/student/messages");
 
       if (res == null) return;
 
@@ -199,7 +196,9 @@ class _ConnectWithUsPageState extends State<ConnectWithUsPage> {
         backgroundColor: AppColors.primary,
       ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary),)
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            )
           : Column(
               children: [
                 Expanded(

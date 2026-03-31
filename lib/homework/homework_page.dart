@@ -82,10 +82,8 @@ class _HomeworkPageState extends State<HomeworkPage> {
     _isDownloading = true;
 
     try {
-      // ✅ Safe URL resolve (no hardcode)
-      final fullUrl = attachment.startsWith('http')
-          ? attachment
-          : ApiService.homeworkAttachment(attachment);
+         // ✅ Safe URL resolve (no hardcode)
+ final fullUrl = ApiService.getFullUrl(attachment);
 
       final fileName = fullUrl.split('/').last;
 
@@ -145,7 +143,9 @@ class _HomeworkPageState extends State<HomeworkPage> {
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary),)
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            )
           : homeworks.isEmpty
           ? const Center(child: Text("No homework available"))
           : ListView.builder(

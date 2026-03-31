@@ -4,12 +4,12 @@ import 'package:webview_flutter/webview_flutter.dart';
 
 class PaymentWebView extends StatefulWidget {
   final String paymentUrl;
-  final String successRedirectUrl; 
-  final String failureRedirectUrl; 
+  final String successRedirectUrl;
+  final String failureRedirectUrl;
   const PaymentWebView({
     super.key,
     required this.paymentUrl,
-    required this.successRedirectUrl, 
+    required this.successRedirectUrl,
     required this.failureRedirectUrl,
   });
   @override
@@ -35,20 +35,17 @@ class _PaymentWebViewState extends State<PaymentWebView> {
             final url = request.url;
 
             if (url.startsWith(widget.successRedirectUrl)) {
-         
               Navigator.pop(context, 'PAYMENT_COMPLETE');
               print('DEBUG: Payment Success URL detected. Returning result.');
               return NavigationDecision.prevent;
-            } 
-       
-            else if (url.startsWith(widget.failureRedirectUrl) || 
-                     url.contains('cancel') ||
-                     url.contains('fail')) 
-            {
-        
+            } else if (url.startsWith(widget.failureRedirectUrl) ||
+                url.contains('cancel') ||
+                url.contains('fail')) {
               Navigator.pop(context, 'PAYMENT_FAILED');
-              print('DEBUG: Payment Failure/Cancel URL detected. Returning result.');
-              return NavigationDecision.prevent; 
+              print(
+                'DEBUG: Payment Failure/Cancel URL detected. Returning result.',
+              );
+              return NavigationDecision.prevent;
             }
 
             return NavigationDecision.navigate;

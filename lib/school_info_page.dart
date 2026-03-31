@@ -78,9 +78,7 @@ class _SchoolInfoPageState extends State<SchoolInfoPage> {
 
       final normalizedUrl = qrCode.startsWith('http')
           ? qrCode
-          : '${ApiService.fileBaseUrl}$qrCode';
-
-      debugPrint("🌐 QR DOWNLOAD URL: $normalizedUrl");
+          : '${ApiService.Url}/$qrCode';
 
       final response = await http.get(Uri.parse(normalizedUrl));
       if (response.statusCode != 200 || response.bodyBytes.isEmpty) {
@@ -96,12 +94,10 @@ class _SchoolInfoPageState extends State<SchoolInfoPage> {
 
         await file.writeAsBytes(response.bodyBytes, flush: true);
 
-        // ✅ PREVIEW OPEN
-        await OpenFile.open(file.path);
-
         if (!mounted) return;
+        await OpenFile.open(file.path);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("📥 Downloaded & preview opened")),
+          const SnackBar(content: Text("✅ QR saved to Downloads folder")),
         );
       }
 
@@ -112,11 +108,13 @@ class _SchoolInfoPageState extends State<SchoolInfoPage> {
 
         await file.writeAsBytes(response.bodyBytes, flush: true);
 
-        // ✅ PREVIEW OPEN
+        if (!mounted) return;
         await OpenFile.open(file.path);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("✅ QR saved in Files app")),
+        );
       }
     } catch (e) {
-      debugPrint("❌ QR download error: $e");
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("❌ Failed to download QR Code")),
@@ -130,14 +128,9 @@ class _SchoolInfoPageState extends State<SchoolInfoPage> {
     if (url.isEmpty) {
       return const AssetImage("assets/images/logo.png");
     }
-
-    final imageUrl = url.startsWith('http')
-        ? url
-        : '${ApiService.fileBaseUrl}$url';
-
-    debugPrint("🖼️ IMAGE URL: $imageUrl");
-
-    return NetworkImage(imageUrl);
+    return NetworkImage(
+      url.startsWith('http') ? url : '${ApiService.Url}/$url',
+    );
   }
 
   @override

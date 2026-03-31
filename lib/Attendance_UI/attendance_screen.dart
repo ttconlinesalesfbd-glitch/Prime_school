@@ -158,7 +158,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             decoration: const BoxDecoration(
               borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
               gradient: LinearGradient(
-                colors: [AppColors.primary, AppColors.primary],
+                colors: [Colors.lightBlue, Colors.blueAccent],
               ),
             ),
             child: Row(

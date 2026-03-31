@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8"?> 
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
 "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -79,23 +79,35 @@
         homework alerts, and academic updates.
     </string>
 
-    <!-- ================= NETWORK / API (🔥 CRITICAL FIX) ================= -->
-    <!-- Required for TestFlight / Release login -->
+    <!-- ================= NETWORK / API (✅ FIXED ATS) ================= -->
     <key>NSAppTransportSecurity</key>
     <dict>
-        <key>NSAllowsArbitraryLoads</key>
-        <true/>
+        <key>NSExceptionDomains</key>
+        <dict>
+            <key>school.edusathi.in</key>
+            <dict>
+                <key>NSIncludesSubdomains</key>
+                <true/>
+                <key>NSExceptionAllowsInsecureHTTPLoads</key>
+                <true/>
+            </dict>
+        </dict>
     </dict>
 
     <!-- Required for url_launcher -->
     <key>LSApplicationQueriesSchemes</key>
-<array>
-  <string>http</string>
-  <string>https</string>
-</array>
+    <array>
+        <string>http</string>
+        <string>https</string>
+    </array>
 
+    <!-- ================= LOCATION (🔥 GEO ATTENDANCE) ================= -->
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>
+        This app uses your location to allow teachers to mark attendance within school premises.
+    </string>
 
-    <!-- ================= KEYCHAIN (🔥 TOKEN SAVE FIX) ================= -->
+    <!-- ================= KEYCHAIN ================= -->
     <key>KeychainSharing</key>
     <array>
         <string>$(AppIdentifierPrefix)com.peps.apppro</string>
@@ -104,14 +116,12 @@
     <!-- ================= PHOTO / FILE ACCESS ================= -->
     <key>NSPhotoLibraryUsageDescription</key>
     <string>
-        This app requires access to your photo library to download and view
-        homework files and study materials.
+        This app requires access to your photo library to upload homework files and view study materials.
     </string>
 
     <key>NSPhotoLibraryAddUsageDescription</key>
     <string>
-        This app needs permission to save downloaded homework files
-        to your photo library.
+        This app needs permission to save downloaded homework files to your device.
     </string>
 
 </dict>

@@ -36,10 +36,7 @@ class _HomeworkDetailPageState extends State<HomeworkDetailPage> {
     setState(() => isDownloading = true);
 
     try {
-      // ✅ URL CENTRALIZED (no hardcode)
-      final fullUrl = filePath.startsWith('http')
-          ? filePath
-          : ApiService.homeworkAttachment(filePath);
+     final fullUrl = ApiService.getFullUrl(filePath);
 
       final fileName = fullUrl.split('/').last;
 

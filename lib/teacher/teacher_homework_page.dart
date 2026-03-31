@@ -84,9 +84,7 @@ class _TeacherHomeworkPageState extends State<TeacherHomeworkPage> {
   // ---------------- FILE DOWNLOAD (IOS + ANDROID SAFE) ----------------
   Future<void> downloadFile(BuildContext context, String attachmentPath) async {
     try {
-      final String fileUrl = attachmentPath.startsWith('http')
-          ? attachmentPath
-          : ApiService.homeworkAttachment(attachmentPath);
+      final String fileUrl = ApiService.getFullUrl(attachmentPath);
 
       debugPrint("⬇️ Download URL: $fileUrl");
 
@@ -111,8 +109,7 @@ class _TeacherHomeworkPageState extends State<TeacherHomeworkPage> {
         final File file = File(filePath);
 
         await file.writeAsBytes(response.bodyBytes, flush: true);
-          await OpenFile.open(filePath);
-
+        await OpenFile.open(file.path);
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("📥 File saved to Downloads folder")),
@@ -126,7 +123,7 @@ class _TeacherHomeworkPageState extends State<TeacherHomeworkPage> {
 
         final File file = File(filePath);
         await file.writeAsBytes(response.bodyBytes, flush: true);
-
+        await OpenFile.open(file.path);
         if (!context.mounted) return;
         await OpenFile.open(filePath); // Files app
       }

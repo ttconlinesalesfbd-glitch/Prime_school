@@ -90,12 +90,9 @@ class TeacherRecentHomeworks extends StatelessWidget {
                                   return;
                                 }
 
-                                // ✅ Teacher homework FINAL S3 URL
-                                final String fileUrl =
-                                    attachment.toString().startsWith('http')
-                                    ? attachment.toString()
-                                    : ApiService.homeworkAttachment(attachment);
-                                debugPrint("📎 HW DOWNLOAD URL: $fileUrl");
+                             final String fileUrl = ApiService.getFullUrl(
+                                  attachment.toString(),
+                                );
 
                                 debugPrint(
                                   "📎 TEACHER HW DOWNLOAD URL: $fileUrl",
@@ -149,9 +146,9 @@ class TeacherRecentHomeworks extends StatelessWidget {
 
         final file = File(filePath);
         await file.writeAsBytes(response.bodyBytes, flush: true);
-        await OpenFile.open(filePath);
 
         if (!context.mounted) return;
+        await OpenFile.open(file.path);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("File saved to Downloads folder")),
         );

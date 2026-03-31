@@ -44,9 +44,8 @@ class TeacherHomeworkDetailPage extends StatelessWidget {
 
         final String filePath = '${downloadsDir.path}/$fileName';
         final File file = File(filePath);
-
-        await file.writeAsBytes(response.bodyBytes, flush: true);
         await OpenFile.open(filePath);
+        await file.writeAsBytes(response.bodyBytes, flush: true);
 
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -63,7 +62,7 @@ class TeacherHomeworkDetailPage extends StatelessWidget {
         await file.writeAsBytes(response.bodyBytes, flush: true);
 
         if (!context.mounted) return;
-        await OpenFile.open(filePath); // Files app
+        await OpenFile.open(filePath);
       }
     } catch (e) {
       if (!context.mounted) return;
@@ -135,12 +134,10 @@ class TeacherHomeworkDetailPage extends StatelessWidget {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                     ),
-                    onPressed: () {
+                     onPressed: () {
                       String fileUrl = homework['Attachment'].toString();
 
-                      if (!fileUrl.startsWith('http')) {
-                        fileUrl = ApiService.homeworkAttachment(fileUrl);
-                      }
+                    fileUrl = ApiService.getFullUrl(fileUrl);
 
                       debugPrint("📎 TEACHER HW DETAIL DOWNLOAD URL: $fileUrl");
 

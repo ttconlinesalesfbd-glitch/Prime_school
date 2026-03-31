@@ -11,6 +11,7 @@ class ApiService {
   /// 🔥 CHANGE ONLY HERE
   static const String baseUrl = "https://peps.apppro.in/api";
   static const String fileBaseUrl = "https://peps.apppro.in/";
+   static const String Url = "https://peps.apppro.in";
 
   /// ⏱ Timeout (iOS safe)
   static const Duration timeout = Duration(seconds: 20);
@@ -33,7 +34,10 @@ class ApiService {
 
     return prefs.getString('auth_token') ?? '';
   }
-
+ static Future<Map<String, String>> multipartHeaders() async {
+    final token = await _getToken();
+    return {'Authorization': 'Bearer $token', 'Accept': 'application/json'};
+  }
   // ================= LOGOUT =================
 
   static Future<void> forceLogout(BuildContext context) async {
@@ -230,23 +234,25 @@ class ApiService {
 
   // ================= ATTACHMENTS =================
   static const siblingUrl = 'https://peps.apppro.in/uploads/no_image.png';
-  static const String s3Base = "https://peps.apppro.in";
+ 
 
-  static String attachmentUrl(String schoolId, String folder, String file) {
-    return "$s3Base/documents/$schoolId/$folder/$file";
+static String getFullUrl(String path) {
+  if (path.isEmpty) return '';
+  if (path.startsWith('http')) return path;
+
+  // remove starting slash (double // avoid)
+  if (path.startsWith('/')) {
+    path = path.substring(1);
   }
 
-  static String resolveMediaUrl(String path) {
-    if (path.isEmpty) return '';
-    if (path.startsWith('http')) return path;
+  return "$Url/$path";
+}
 
-    return "$s3Base/$path";
-  }
+ 
+ 
+  
 
-  static String homeworkAttachment(String fileName) {
-    if (fileName.startsWith('http')) return fileName;
-    return "$s3Base/$fileName";
-  }
+
 }
 
 class AppColors {

@@ -31,10 +31,7 @@ class _StudentResultPageState extends State<StudentResultPage> {
     setState(() => isExamLoading = true);
 
     try {
-      final res = await ApiService.post(
-        context,
-        '/get_exam',
-      );
+      final res = await ApiService.post(context, '/get_exam');
 
       if (res == null) return;
 

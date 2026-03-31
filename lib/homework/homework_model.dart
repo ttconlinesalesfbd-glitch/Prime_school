@@ -29,11 +29,7 @@ Future<void> downloadFile(BuildContext context, String filePath) async {
   if (_isDownloading) return;
   _isDownloading = true;
 
-  // ✅ URL now comes from ApiService
-  final fullUrl = filePath.startsWith('http')
-      ? filePath
-      : ApiService.homeworkAttachment(filePath);
-  debugPrint("DOWNLOAD URL => $fullUrl");
+ final fullUrl = ApiService.getFullUrl(filePath);
 
   try {
     final fileName = fullUrl.split('/').last;
