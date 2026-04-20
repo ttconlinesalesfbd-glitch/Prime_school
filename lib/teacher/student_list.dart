@@ -28,7 +28,11 @@ class _StudentListPageState extends State<StudentListPage> {
     setState(() => _isLoading = true);
 
     try {
-      final response = await ApiService.post(context, '/teacher/student/list');
+      final response = await ApiService.post(
+        context,
+        '/teacher/student/list',
+        body: {"type": "all"},
+      );
 
       if (response == null) {
         debugPrint("🔴 RESPONSE NULL (TOKEN EXPIRED)");
@@ -84,11 +88,11 @@ class _StudentListPageState extends State<StudentListPage> {
   // ---------------- DATE FORMAT ----------------
   String formatDate(String? dob) {
     if (dob == null || dob.isEmpty) return 'N/A';
+
     try {
-      final date = DateTime.parse(dob);
-      return "${date.day.toString().padLeft(2, '0')}-"
-          "${date.month.toString().padLeft(2, '0')}-"
-          "${date.year}";
+      final parts = dob.split('-'); // dd-MM-yyyy
+
+      return "${parts[0]}-${parts[1]}-${parts[2]}"; // same format return
     } catch (_) {
       return 'Invalid';
     }
