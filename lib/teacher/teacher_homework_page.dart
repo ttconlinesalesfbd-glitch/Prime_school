@@ -86,8 +86,6 @@ class _TeacherHomeworkPageState extends State<TeacherHomeworkPage> {
     try {
       final String fileUrl = ApiService.getFullUrl(attachmentPath);
 
-      debugPrint("⬇️ Download URL: $fileUrl");
-
       final response = await http
           .get(Uri.parse(fileUrl))
           .timeout(const Duration(seconds: 30));
@@ -98,41 +96,27 @@ class _TeacherHomeworkPageState extends State<TeacherHomeworkPage> {
 
       final String fileName = Uri.parse(fileUrl).pathSegments.last;
 
-      // ================= ANDROID =================
-      if (Platform.isAndroid) {
-        // ✅ REAL Downloads folder (user visible)
-        final Directory downloadsDir = Directory(
-          '/storage/emulated/0/Download',
-        );
+      final Directory dir = await getApplicationDocumentsDirectory();
 
-        final String filePath = '${downloadsDir.path}/$fileName';
-        final File file = File(filePath);
+      final String filePath = '${dir.path}/$fileName';
 
-        await file.writeAsBytes(response.bodyBytes, flush: true);
-        await OpenFile.open(file.path);
-        if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("📥 File saved to Downloads folder")),
-        );
-      }
+      final File file = File(filePath);
 
-      // ================= iOS =================
-      if (Platform.isIOS) {
-        final Directory dir = await getApplicationDocumentsDirectory();
-        final String filePath = '${dir.path}/$fileName';
+      await file.writeAsBytes(response.bodyBytes, flush: true);
 
-        final File file = File(filePath);
-        await file.writeAsBytes(response.bodyBytes, flush: true);
-        await OpenFile.open(file.path);
-        if (!context.mounted) return;
-        await OpenFile.open(filePath); // Files app
-      }
-    } catch (e) {
-      debugPrint("❌ Download error: $e");
       if (!context.mounted) return;
+
+      await OpenFile.open(file.path);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("✅ Downloaded & Preview Opened")),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text("Download failed")));
+      ).showSnackBar(const SnackBar(content: Text("❌ Download Failed")));
     }
   }
 

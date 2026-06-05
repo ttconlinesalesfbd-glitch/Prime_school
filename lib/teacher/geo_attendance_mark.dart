@@ -24,11 +24,30 @@ class _GeoAttendanceTeacherState extends State<GeoAttendanceTeacher> {
   double radius = 0;
 
   String attendanceStatus = "not-marked";
-
   @override
   void initState() {
     super.initState();
-    fetchSchoolLocation();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await initLocationFlow();
+    });
+  }
+
+  Future<void> initLocationFlow() async {
+    setState(() {
+      loadingLocation = true;
+    });
+
+    bool hasPermission = await checkPermission();
+
+    if (!hasPermission) {
+      setState(() {
+        loadingLocation = false;
+      });
+      return;
+    }
+
+    await fetchSchoolLocation();
   }
 
   /// GET SCHOOL LOCATION FROM API
@@ -44,10 +63,14 @@ class _GeoAttendanceTeacherState extends State<GeoAttendanceTeacher> {
       final data = jsonDecode(response.body);
 
       attendanceStatus = data["status"];
+      schoolLat =
+          double.tryParse(data["school"]?["Latitude"]?.toString() ?? "0") ?? 0;
 
-      schoolLat = double.parse(data["school"]["Latitude"]);
-      schoolLng = double.parse(data["school"]["Longitude"]);
-      radius = double.parse(data["school"]["Radius"].toString());
+      schoolLng =
+          double.tryParse(data["school"]?["Longitude"]?.toString() ?? "0") ?? 0;
+
+      radius =
+          double.tryParse(data["school"]?["Radius"]?.toString() ?? "0") ?? 0;
 
       debugPrint("School Lat: $schoolLat");
       debugPrint("School Lng: $schoolLng");

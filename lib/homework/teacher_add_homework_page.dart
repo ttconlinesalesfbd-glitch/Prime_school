@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:image_picker/image_picker.dart';
+
 import 'package:intl/intl.dart';
 import 'package:prime_school/api_service.dart';
 
@@ -19,15 +20,16 @@ class _TeacherAddHomeworkPageState extends State<TeacherAddHomeworkPage> {
   List sections = [];
   int? selectedClassId;
   int? selectedSectionId;
-  String? existingAttachment;
+
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   DateTime? assignDate;
   DateTime? submissionDate;
   File? selectedFile;
-  final ImagePicker _picker = ImagePicker();
+  String? existingAttachment;
+
   bool isLoading = false;
-  bool _isSubmitting = false; // 🔒 prevent double submit
+  bool _isSubmitting = false;
 
   @override
   void initState() {
@@ -42,9 +44,6 @@ class _TeacherAddHomeworkPageState extends State<TeacherAddHomeworkPage> {
     }
   }
 
-  // ============================
-  // 🔄 EDIT MODE SEQUENTIAL LOAD
-  // ============================
   Future<void> _loadEditFlow() async {
     setState(() => isLoading = true);
     await fetchClasses();
@@ -52,9 +51,6 @@ class _TeacherAddHomeworkPageState extends State<TeacherAddHomeworkPage> {
     if (mounted) setState(() => isLoading = false);
   }
 
-  // ============================
-  // 📚 FETCH CLASSES
-  // ============================
   Future<void> fetchClasses() async {
     final res = await ApiService.post(context, "/get_class");
     if (res == null) return;
@@ -66,9 +62,6 @@ class _TeacherAddHomeworkPageState extends State<TeacherAddHomeworkPage> {
     }
   }
 
-  // ============================
-  // 📘 FETCH SECTIONS
-  // ============================
   Future<void> fetchSections(int classId) async {
     final res = await ApiService.post(
       context,
@@ -86,38 +79,63 @@ class _TeacherAddHomeworkPageState extends State<TeacherAddHomeworkPage> {
     }
   }
 
- 
-  // ============================
-  // ✏️ FETCH HOMEWORK DETAILS
-  // ============================
- Future<void> fetchHomeworkDetails(int homeworkId) async {
-  final res = await ApiService.post(
-    context,
-    "/teacher/homework/edit",
-    body: {'HomeworkId': homeworkId},
-  );
+  Future<void> fetchHomeworkDetails(int homeworkId) async {
+    final res = await ApiService.post(
+      context,
+      "/teacher/homework/edit",
+      body: {'HomeworkId': homeworkId},
+    );
 
-  if (res == null || res.statusCode != 200) return;
+    print("🟢 EDIT STATUS: ${res?.statusCode}");
+    print("📦 EDIT BODY: ${res?.body}");
 
-  final data = jsonDecode(res.body);
+    if (res == null || res.statusCode != 200) return;
 
-  if (!mounted) return;
+    final data = jsonDecode(res.body);
 
-  _titleController.text = data['HomeworkTitle'] ?? '';
-  _descriptionController.text = data['Remark'] ?? '';
-  assignDate = DateTime.tryParse(data['WorkDate'] ?? '');
-  submissionDate = DateTime.tryParse(data['SubmissionDate'] ?? '');
+    print("🧾 DECODED DATA: $data");
 
-  selectedClassId = int.tryParse(data['Class'] ?? '');
-  if (selectedClassId != null) {
-    await fetchSections(selectedClassId!);
+    print("📎 ATTACHMENT RAW: ${data['Attachment']}");
+
+    if (!mounted) return;
+
+    _titleController.text = data['HomeworkTitle'] ?? '';
+
+    _descriptionController.text = data['Remark'] ?? '';
+
+    assignDate = DateTime.tryParse(data['WorkDate'] ?? '');
+
+    submissionDate = DateTime.tryParse(data['SubmissionDate'] ?? '');
+
+    // =========================
+    // 📎 ATTACHMENT
+    // =========================
+    if (data['Attachment'] != null &&
+        data['Attachment'].toString().isNotEmpty) {
+      existingAttachment = "${ApiService.fileBaseUrl}/${data['Attachment']}";
+
+      print(
+        "✅ FINAL ATTACHMENT URL: "
+        "$existingAttachment",
+      );
+    } else {
+      print("❌ ATTACHMENT NULL");
+    }
+
+    selectedClassId = int.tryParse(data['Class'] ?? '');
+
+    if (selectedClassId != null) {
+      await fetchSections(selectedClassId!);
+    }
+
+    selectedSectionId = int.tryParse(data['Section'] ?? '');
+
+    setState(() {});
   }
 
-  selectedSectionId = int.tryParse(data['Section'] ?? '');
-  setState(() {});
-}
-
-
+  // ============================
+  // 📤 SUBMIT / UPDATE HOMEWORK
+  // ============================
   Future<void> submitHomework() async {
     if (_isSubmitting) return;
 
@@ -198,15 +216,27 @@ class _TeacherAddHomeworkPageState extends State<TeacherAddHomeworkPage> {
     }
   }
 
-  Future<void> pickImage() async {
-    final XFile? image = await _picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 80,
+  Future<void> pickFile() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
     );
 
-    if (image != null) {
+    if (result != null && result.files.single.path != null) {
+      final file = File(result.files.single.path!);
+
+      // 5 MB limit
+      final fileSize = await file.length();
+
+      if (fileSize > 5 * 1024 * 1024) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("File size must be less than 5 MB")),
+        );
+        return;
+      }
+
       setState(() {
-        selectedFile = File(image.path);
+        selectedFile = file;
       });
     }
   }
@@ -393,7 +423,6 @@ class _TeacherAddHomeworkPageState extends State<TeacherAddHomeworkPage> {
                     ],
                   ),
                   const SizedBox(height: 10),
-
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -405,96 +434,81 @@ class _TeacherAddHomeworkPageState extends State<TeacherAddHomeworkPage> {
                           color: Colors.black54,
                         ),
                       ),
-                      const SizedBox(height: 8),
-
-                      GestureDetector(
-                        onTap: pickImage,
-                        child: Container(
-                          height: 100,
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: AppColors.primary),
-                            color: AppColors.primary.withOpacity(0.05),
-                          ),
-                          child: Row(
-                            children: [
-                              // LEFT SIDE TEXT
-                              Expanded(
-                                child: Row(
-                                  children: const [
-                                    Icon(
-                                      Icons.attach_file,
-                                      color: AppColors.primary,
-                                    ),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      "Tap to select attachment",
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w500,
-                                        color: Colors.black87,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                      const SizedBox(height: 5),
+                      (selectedFile == null && existingAttachment == null)
+                          ? ElevatedButton.icon(
+                              icon: const Icon(
+                                Icons.attach_file,
+                                color: AppColors.primary,
                               ),
 
-                              // RIGHT SIDE IMAGE PREVIEW
-                              if (selectedFile != null ||
-                                  existingAttachment != null)
-                                Stack(
-                                  children: [
-                                    Container(
-                                      width: 100,
-                                      height: 100,
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(
-                                          color: Colors.grey.shade300,
-                                        ),
+                              label: const Text(
+                                "Choose File",
+                                style: TextStyle(color: AppColors.primary),
+                              ),
+
+                              onPressed: pickFile,
+                            )
+                          : Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
+                              ),
+
+                              decoration: BoxDecoration(
+                                border: Border.all(color: AppColors.primary),
+
+                                borderRadius: BorderRadius.circular(10),
+
+                                color: AppColors.primary.withOpacity(0.05),
+                              ),
+
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    ((selectedFile?.path ??
+                                                existingAttachment ??
+                                                "")
+                                            .toLowerCase()
+                                            .endsWith(".pdf"))
+                                        ? Icons.picture_as_pdf
+                                        : Icons.image,
+
+                                    color: AppColors.primary,
+                                  ),
+
+                                  const SizedBox(width: 8),
+
+                                  Expanded(
+                                    child: Text(
+                                      selectedFile != null
+                                          ? selectedFile!.path.split('/').last
+                                          : existingAttachment!.split('/').last,
+
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w500,
                                       ),
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(8),
-                                        child: selectedFile != null
-                                            ? Image.file(
-                                                selectedFile!,
-                                                fit: BoxFit.cover,
-                                              )
-                                            : Image.network(
-                                                existingAttachment!,
-                                                fit: BoxFit.cover,
-                                              ),
-                                      ),
+
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.close,
+                                      color: Colors.red,
                                     ),
 
-                                    // REMOVE BUTTON
-                                    Positioned(
-                                      right: -5,
-                                      top: -5,
-                                      child: GestureDetector(
-                                        onTap: () {
-                                          setState(() {
-                                            selectedFile = null;
-                                            existingAttachment = null;
-                                          });
-                                        },
-                                        child: const CircleAvatar(
-                                          radius: 12,
-                                          backgroundColor: Colors.red,
-                                          child: Icon(
-                                            Icons.close,
-                                            size: 14,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                            ],
-                          ),
-                        ),
-                      ),
+                                    onPressed: () {
+                                      setState(() {
+                                        selectedFile = null;
+                                        existingAttachment = null;
+                                      });
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
                     ],
                   ),
                   const SizedBox(height: 20),

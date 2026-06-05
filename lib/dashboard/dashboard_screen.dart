@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 // import 'package:prime_school/bus_tracking/bus_tracking.dart';
-import 'package:prime_school/dashboard/stu_dashboard.dart';
+// import 'package:prime_school/dashboard/stu_dashboard.dart';
 import 'package:prime_school/login_page.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -32,7 +32,6 @@ import 'package:prime_school/syllabus/syllabus.dart';
 import 'package:prime_school/Attendance_UI/attendnce_box.dart';
 import 'package:prime_school/Attendance_UI/stu_attendance_report.dart';
 import 'package:url_launcher/url_launcher.dart';
-
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -976,13 +975,13 @@ class InfoCard extends StatelessWidget {
         : Colors.indigo.shade50;
 
     final String? attachment = item["Attachment"];
-    final String schoolId = item["SchoolId"]?.toString() ?? '';
+
     final bool hasAttachment =
-        attachment != null && attachment.isNotEmpty && schoolId.isNotEmpty;
- 
- final String fullAttachmentUrl = hasAttachment
-    ? ApiService.getFullUrl(attachment)
-    : '';
+        attachment != null && attachment.toString().isNotEmpty;
+
+    final String fullAttachmentUrl = hasAttachment
+        ? ApiService.getFullUrl(attachment)
+        : '';
 
     debugPrint("📎 NOTICE ATTACHMENT URL: $fullAttachmentUrl");
 
@@ -1235,18 +1234,18 @@ class LeftSidebarMenu extends StatelessWidget {
                 );
               },
             ),
-            sidebarTile(
-              icon: Icons.dashboard,
-              context: context,
-              title: 'New Dashboard',
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => StudentDashboard()),
-                );
-              },
-            ),
 
+            // sidebarTile(
+            //   icon: Icons.dashboard,
+            //   context: context,
+            //   title: 'New Dashboard',
+            //   onTap: () {
+            //     Navigator.push(
+            //       context,
+            //       MaterialPageRoute(builder: (_) => StudentDashboard()),
+            //     );
+            //   },
+            // ),
             sidebarTile(
               icon: Icons.person,
               context: context,
@@ -1454,7 +1453,10 @@ class LeftSidebarMenu extends StatelessWidget {
                             (route) => false,
                           );
                         },
-                        child: const Text("Logout"),
+                        child: const Text(
+                          "Logout",
+                          style: TextStyle(color: AppColors.danger),
+                        ),
                       ),
                     ],
                   ),

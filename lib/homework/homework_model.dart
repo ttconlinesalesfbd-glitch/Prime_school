@@ -27,47 +27,40 @@ String formatDate(String? inputDate) {
 // ====================================================
 Future<void> downloadFile(BuildContext context, String filePath) async {
   if (_isDownloading) return;
+
   _isDownloading = true;
 
- final fullUrl = ApiService.getFullUrl(filePath);
-
   try {
+    final fullUrl = ApiService.getFullUrl(filePath);
+
     final fileName = fullUrl.split('/').last;
+
+    final dir = await getApplicationDocumentsDirectory();
+
+    final savePath = '${dir.path}/$fileName';
+
     final dio = Dio();
-    late String savePath;
 
-    // ================= ANDROID =================
-    if (Platform.isAndroid) {
-      final downloadsDir = Directory('/storage/emulated/0/Download');
-      savePath = '${downloadsDir.path}/$fileName';
+    await dio.download(fullUrl, savePath);
 
-      await dio.download(fullUrl, savePath);
+    final file = File(savePath);
 
-      // ✅ Preview open
+    bool exists = await file.exists();
+
+    if (exists) {
       await OpenFile.open(savePath);
-
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("📥 Downloaded & Preview opened")),
-        );
-      }
     }
 
-    // ================= iOS =================
-    if (Platform.isIOS) {
-      final dir = await getApplicationDocumentsDirectory();
-      savePath = '${dir.path}/$fileName';
-
-      await dio.download(fullUrl, savePath);
-
-      // ✅ Preview open
-      await OpenFile.open(savePath);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("✅ Downloaded & Preview Opened")),
+      );
     }
   } catch (e) {
     if (context.mounted) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text("❌ Download failed")));
+      ).showSnackBar(const SnackBar(content: Text("❌ Download Failed")));
     }
   } finally {
     _isDownloading = false;

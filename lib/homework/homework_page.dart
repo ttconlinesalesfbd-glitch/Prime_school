@@ -74,66 +74,74 @@ class _HomeworkPageState extends State<HomeworkPage> {
     }
   }
 
-  // =========================
-  // 📥 SAFE FILE DOWNLOAD
-  // =========================
   Future<void> downloadFile(BuildContext context, String attachment) async {
     if (_isDownloading) return;
+
     _isDownloading = true;
 
     try {
-         // ✅ Safe URL resolve (no hardcode)
- final fullUrl = ApiService.getFullUrl(attachment);
+      print("=========== DOWNLOAD DEBUG ===========");
+      print("ATTACHMENT => $attachment");
+
+      final fullUrl = ApiService.getFullUrl(attachment);
+
+      print("FULL URL => $fullUrl");
 
       final fileName = fullUrl.split('/').last;
 
-      debugPrint("⬇️ Download URL: $fullUrl");
+      print("FILE NAME => $fileName");
+
+      final dir = await getApplicationDocumentsDirectory();
+
+      print("SAVE DIRECTORY => ${dir.path}");
+
+      final savePath = '${dir.path}/$fileName';
+
+      print("SAVE PATH => $savePath");
 
       final response = await http.get(Uri.parse(fullUrl));
-      if (response.statusCode != 200 || response.bodyBytes.isEmpty) {
-        throw Exception("Download failed");
+
+      print("DOWNLOAD STATUS => ${response.statusCode}");
+      print("FILE SIZE => ${response.bodyBytes.length}");
+
+      if (response.statusCode != 200) {
+        throw Exception("Server Error: ${response.statusCode}");
       }
 
-      // ================= ANDROID =================
-      if (Platform.isAndroid) {
-        final downloadsDir = Directory('/storage/emulated/0/Download');
-        final file = File('${downloadsDir.path}/$fileName');
-
-        await file.writeAsBytes(response.bodyBytes, flush: true);
-
-        // ✅ PREVIEW OPEN
-        await OpenFile.open(file.path);
-
-        if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("📥 Downloaded & preview opened")),
-        );
+      if (response.bodyBytes.isEmpty) {
+        throw Exception("Empty file received");
       }
 
-      // ================= iOS =================
-      if (Platform.isIOS) {
-        final dir = await getApplicationDocumentsDirectory();
-        final file = File('${dir.path}/$fileName');
+      final file = File(savePath);
 
-        await file.writeAsBytes(response.bodyBytes, flush: true);
+      await file.writeAsBytes(response.bodyBytes, flush: true);
 
-        // ✅ PREVIEW OPEN
-        await OpenFile.open(file.path);
-      }
-    } catch (e) {
-      debugPrint("❌ download error: $e");
+      print("FILE SAVED SUCCESSFULLY");
+
+      final openResult = await OpenFile.open(savePath);
+
+      print("OPEN FILE RESULT => ${openResult.message}");
+
       if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("✅ Downloaded & Preview Opened")),
+      );
+    } catch (e, stack) {
+      print("=========== DOWNLOAD ERROR ===========");
+      print(e);
+      print(stack);
+
+      if (!context.mounted) return;
+
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text("❌ Download failed")));
+      ).showSnackBar(SnackBar(content: Text("❌ Download Failed: $e")));
     } finally {
       _isDownloading = false;
     }
   }
 
-  // =========================
-  // 🧱 UI (UNCHANGED)
-  // =========================
   @override
   Widget build(BuildContext context) {
     return Scaffold(

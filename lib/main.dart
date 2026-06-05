@@ -1,11 +1,12 @@
+import 'package:prime_school/admin/admin_dashboard.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:prime_school/Notification/notification_service.dart';
-
 import 'firebase_options.dart';
+import 'dart:io';
 import 'package:prime_school/splash_screen.dart';
 import 'package:prime_school/login_page.dart';
 import 'package:prime_school/dashboard/dashboard_screen.dart';
@@ -13,26 +14,48 @@ import 'package:prime_school/teacher/teacher_dashboard_screen.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
+
 /// 🔔 Background notification handler
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 }
+
+// Future<void> main() async {
+//   WidgetsFlutterBinding.ensureInitialized();
+
+//   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+//   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+//   await NotificationService.initialize();
+//   runApp(const MyApp());
+// }
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  try {
+    // ✅ Android only Firebase init
+    if (Platform.isAndroid) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
 
-  FirebaseMessaging.onBackgroundMessage(
-    _firebaseMessagingBackgroundHandler,
-  );
-  await NotificationService.initialize();
+      FirebaseMessaging.onBackgroundMessage(
+        _firebaseMessagingBackgroundHandler,
+      );
+
+      await NotificationService.initialize();
+    }
+
+    // ✅ iOS ke liye temporarily skip
+    if (Platform.isIOS) {
+      debugPrint("🍎 iOS: Firebase skipped");
+    }
+  } catch (e) {
+    debugPrint("MAIN ERROR: $e");
+  }
+
   runApp(const MyApp());
-  
 }
 
 class MyApp extends StatelessWidget {
@@ -42,8 +65,11 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       navigatorKey: navigatorKey,
-        navigatorObservers: [routeObserver], 
+      navigatorObservers: [routeObserver],
       debugShowCheckedModeBanner: false,
+
+      supportedLocales: const [Locale('en')],
+
       home: const RootDecider(),
     );
   }
@@ -62,16 +88,60 @@ class _RootDeciderState extends State<RootDecider> {
 
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
+  // @override
+  // void initState() {
+  //   super.initState();
+  //   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+  //     debugPrint("🔔 Foreground message received");
+  //     NotificationService.display(message);
+  //   });
+  //   _initFirebaseMessaging();
+  //   _initApp();
+  // }
+
   @override
   void initState() {
     super.initState();
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-    debugPrint("🔔 Foreground message received");
-    NotificationService.display(message);
-  });
+
+    if (Platform.isAndroid) {
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+        NotificationService.display(message);
+      });
+
+      _initFirebaseMessaging();
+    }
 
     _initApp();
   }
+
+  Future<void> _initFirebaseMessaging() async {
+    if (!Platform.isAndroid) return;
+
+    try {
+      NotificationSettings settings = await FirebaseMessaging.instance
+          .requestPermission(alert: true, badge: true, sound: true);
+
+      debugPrint("🔔 Permission status: ${settings.authorizationStatus}");
+
+      String? fcmToken = await FirebaseMessaging.instance.getToken();
+
+      debugPrint("🔥 FCM TOKEN = $fcmToken");
+    } catch (e) {
+      debugPrint("FCM ERROR: $e");
+    }
+  }
+  // Future<void> _initFirebaseMessaging() async {
+  //   NotificationSettings settings = await FirebaseMessaging.instance
+  //       .requestPermission(alert: true, badge: true, sound: true);
+
+  //   debugPrint("🔔 Permission status: ${settings.authorizationStatus}");
+
+  //   String? fcmToken = await FirebaseMessaging.instance.getToken();
+  //   String? apnsToken = await FirebaseMessaging.instance.getAPNSToken();
+
+  //   debugPrint("🔥 FCM TOKEN = $fcmToken");
+  //   debugPrint("🍎 APNS TOKEN = $apnsToken");
+  // }
 
   Future<void> _initApp() async {
     try {
@@ -80,8 +150,7 @@ class _RootDeciderState extends State<RootDecider> {
       final isLoggedIn = prefs.getBool('is_logged_in') ?? false;
       final userType = prefs.getString('user_type') ?? '';
 
-      final secureToken =
-          await _secureStorage.read(key: 'auth_token') ?? '';
+      final secureToken = await _secureStorage.read(key: 'auth_token') ?? '';
       final prefsToken = prefs.getString('auth_token') ?? '';
 
       final token = secureToken.isNotEmpty ? secureToken : prefsToken;
@@ -112,6 +181,8 @@ class _RootDeciderState extends State<RootDecider> {
         return const TeacherDashboardScreen();
       case 'Student':
         return const DashboardScreen();
+      case 'Admin':
+        return const AdminDashboardPage();
       default:
         return LoginPage();
     }

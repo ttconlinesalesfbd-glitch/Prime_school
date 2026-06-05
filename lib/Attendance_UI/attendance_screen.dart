@@ -29,9 +29,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     _fetchAttendance();
   }
 
-  // ====================================================
-  // 🔐 SAFE ATTENDANCE FETCH (iOS + Android)
-  // ====================================================
   Future<void> _fetchAttendance({String? selectedDate}) async {
     if (!mounted) return;
 
@@ -133,8 +130,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       ),
     );
   }
-
-  // ===================== UI (UNCHANGED) =====================
 
   Widget _buildCalendarContainer(
     int year,

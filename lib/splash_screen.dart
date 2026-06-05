@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:prime_school/login_page.dart';
 import 'package:flutter/material.dart';
 import 'package:prime_school/api_service.dart';
@@ -11,26 +13,32 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  @override
-  void initState() {
-    super.initState();
-    _checkForUpdate();
-  }
+@override
+void initState() {
+  super.initState();
+
+  Future.microtask(() async {
+    await _checkForUpdate();
+  });
+}
 
   Future<void> _checkForUpdate() async {
-    try {
-      final AppUpdateInfo updateInfo = await InAppUpdate.checkForUpdate();
+  try {
+    if (Platform.isAndroid) {
+      final AppUpdateInfo updateInfo =
+          await InAppUpdate.checkForUpdate();
 
-      if (updateInfo.updateAvailability == UpdateAvailability.updateAvailable) {
-        // 🔴 FORCE UPDATE
+      if (updateInfo.updateAvailability ==
+          UpdateAvailability.updateAvailable) {
         await InAppUpdate.performImmediateUpdate();
       }
-    } catch (e) {
-      debugPrint("In-app update error: $e");
     }
-
-    _goNext();
+  } catch (e) {
+    debugPrint("In-app update error: $e");
   }
+
+  _goNext();
+}
 
   void _goNext() {
     Future.delayed(const Duration(seconds: 2), () {

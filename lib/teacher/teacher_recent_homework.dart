@@ -52,7 +52,10 @@ class TeacherRecentHomeworks extends StatelessWidget {
                     ),
                   );
                 },
-                child: const Text("View All"),
+                child: const Text(
+                  "View All",
+                  style: TextStyle(color: AppColors.primary),
+                ),
               ),
             ],
           ),
@@ -90,7 +93,7 @@ class TeacherRecentHomeworks extends StatelessWidget {
                                   return;
                                 }
 
-                             final String fileUrl = ApiService.getFullUrl(
+                                final String fileUrl = ApiService.getFullUrl(
                                   attachment.toString(),
                                 );
 
@@ -129,48 +132,35 @@ class TeacherRecentHomeworks extends StatelessWidget {
     }
 
     try {
-      debugPrint("⬇️ Downloading: $url");
-
       final response = await http.get(Uri.parse(url));
+
       if (response.statusCode != 200 || response.bodyBytes.isEmpty) {
         throw Exception("Failed to download file");
       }
 
       final fileName = Uri.parse(url).pathSegments.last;
 
-      // ================= ANDROID =================
-      if (Platform.isAndroid) {
-        // ✅ Real user-visible Downloads folder
-        final downloadsDir = Directory('/storage/emulated/0/Download');
-        final filePath = '${downloadsDir.path}/$fileName';
+      final dir = await getApplicationDocumentsDirectory();
 
-        final file = File(filePath);
-        await file.writeAsBytes(response.bodyBytes, flush: true);
+      final filePath = '${dir.path}/$fileName';
 
-        if (!context.mounted) return;
-        await OpenFile.open(file.path);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("File saved to Downloads folder")),
-        );
-      }
+      final file = File(filePath);
 
-      // ================= iOS =================
-      if (Platform.isIOS) {
-        final dir = await getApplicationDocumentsDirectory();
-        final filePath = '${dir.path}/$fileName';
+      await file.writeAsBytes(response.bodyBytes, flush: true);
 
-        final file = File(filePath);
-        await file.writeAsBytes(response.bodyBytes, flush: true);
-
-        if (!context.mounted) return;
-        await OpenFile.open(filePath); // Files app
-      }
-    } catch (e) {
-      debugPrint("❌ Teacher HW download error: $e");
       if (!context.mounted) return;
+
+      await OpenFile.open(file.path);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("✅ Downloaded & Preview Opened")),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text("Download failed")));
+      ).showSnackBar(const SnackBar(content: Text("❌ Download Failed")));
     }
   }
 

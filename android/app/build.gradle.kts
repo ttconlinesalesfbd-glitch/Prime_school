@@ -17,7 +17,7 @@ android {
         applicationId = "com.peps.apppro"
         minSdk = flutter.minSdkVersion
         targetSdk = 36
-        versionCode = 11
+        versionCode = 15
         versionName = "2.0.1"
     }
 

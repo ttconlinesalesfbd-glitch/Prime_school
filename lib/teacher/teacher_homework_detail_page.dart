@@ -23,55 +23,63 @@ class TeacherHomeworkDetailPage extends StatelessWidget {
   }
 
   // ---------------- DOWNLOAD FILE ----------------
-  Future<void> downloadFile(
-    BuildContext context,
-    String url,
-    String fileName,
-  ) async {
-    try {
-      final response = await http.get(Uri.parse(url));
+ Future<void> downloadFile(
+  BuildContext context,
+  String url,
+  String fileName,
+) async {
 
-      if (response.statusCode != 200 || response.bodyBytes.isEmpty) {
-        throw Exception("Failed to download file");
-      }
+  try {
 
-      // ================= ANDROID =================
-      if (Platform.isAndroid) {
-        // ✅ REAL Downloads folder (user visible)
-        final Directory downloadsDir = Directory(
-          '/storage/emulated/0/Download',
-        );
+    final response = await http.get(
+      Uri.parse(url),
+    );
 
-        final String filePath = '${downloadsDir.path}/$fileName';
-        final File file = File(filePath);
-        await OpenFile.open(filePath);
-        await file.writeAsBytes(response.bodyBytes, flush: true);
-
-        if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("📥 File saved to Downloads folder")),
-        );
-      }
-
-      // ================= iOS =================
-      if (Platform.isIOS) {
-        final Directory dir = await getApplicationDocumentsDirectory();
-        final String filePath = '${dir.path}/$fileName';
-
-        final File file = File(filePath);
-        await file.writeAsBytes(response.bodyBytes, flush: true);
-
-        if (!context.mounted) return;
-        await OpenFile.open(filePath);
-      }
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("❌ Download failed")));
+    if (response.statusCode != 200 ||
+        response.bodyBytes.isEmpty) {
+      throw Exception(
+        "Failed to download file",
+      );
     }
-  }
 
+    final Directory dir =
+        await getApplicationDocumentsDirectory();
+
+    final String filePath =
+        '${dir.path}/$fileName';
+
+    final File file = File(filePath);
+
+    await file.writeAsBytes(
+      response.bodyBytes,
+      flush: true,
+    );
+
+    if (!context.mounted) return;
+
+    await OpenFile.open(filePath);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          "✅ Downloaded & Preview Opened",
+        ),
+      ),
+    );
+
+  } catch (e) {
+
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          "❌ Download Failed",
+        ),
+      ),
+    );
+  }
+}
   @override
   Widget build(BuildContext context) {
     final attachment = homework['Attachment'];

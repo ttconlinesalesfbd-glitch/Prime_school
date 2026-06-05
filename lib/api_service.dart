@@ -197,7 +197,6 @@ class ApiService {
   static Future<void> saveSession(Map<String, dynamic> data) async {
     final prefs = await SharedPreferences.getInstance();
 
-    // 🔐 Token
     await _secureStorage.write(key: 'auth_token', value: data['token']);
     await prefs.setString('auth_token', data['token']);
     await prefs.setBool('is_logged_in', true);
@@ -236,17 +235,17 @@ class ApiService {
   static const siblingUrl = 'https://peps.apppro.in/uploads/no_image.png';
  
 
-static String getFullUrl(String path) {
-  if (path.isEmpty) return '';
-  if (path.startsWith('http')) return path;
+  // ================= FILE / IMAGE URL =================
+  static const String noticeUrl = "https://peps.apppro.in/";
 
-  // remove starting slash (double // avoid)
-  if (path.startsWith('/')) {
-    path = path.substring(1);
+  static String getFullUrl(String path) {
+    if (path.isEmpty) return '';
+
+    if (path.startsWith('http')) return path;
+
+    return "$noticeUrl$path";
   }
 
-  return "$Url/$path";
-}
 
  
  

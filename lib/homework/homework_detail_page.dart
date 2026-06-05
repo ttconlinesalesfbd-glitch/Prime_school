@@ -31,57 +31,73 @@ class _HomeworkDetailPageState extends State<HomeworkDetailPage> {
   // 📥 SAFE FILE DOWNLOAD (iOS + Android)
   // ====================================================
   Future<void> downloadFile(String filePath) async {
+
     if (isDownloading) return;
 
     setState(() => isDownloading = true);
 
     try {
-     final fullUrl = ApiService.getFullUrl(filePath);
+
+      final fullUrl = ApiService.getFullUrl(filePath);
 
       final fileName = fullUrl.split('/').last;
 
-      final response = await http.get(Uri.parse(fullUrl));
-      if (response.statusCode != 200 || response.bodyBytes.isEmpty) {
-        throw Exception("Download failed");
-      }
+      final dir = await getApplicationDocumentsDirectory();
 
-      // ================= ANDROID =================
-      if (Platform.isAndroid) {
-        final downloadsDir = Directory('/storage/emulated/0/Download');
-        final file = File('${downloadsDir.path}/$fileName');
+      final savePath = '${dir.path}/$fileName';
 
-        await file.writeAsBytes(response.bodyBytes, flush: true);
+      final response = await http.get(
+        Uri.parse(fullUrl),
+      );
 
-        // ✅ PREVIEW OPEN
-        await OpenFile.open(file.path);
-
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("📥 Downloaded & preview opened")),
+      if (response.statusCode != 200) {
+        throw Exception(
+          "Server Error: ${response.statusCode}",
         );
       }
 
-      // ================= iOS =================
-      if (Platform.isIOS) {
-        final dir = await getApplicationDocumentsDirectory();
-        final file = File('${dir.path}/$fileName');
-
-        await file.writeAsBytes(response.bodyBytes, flush: true);
-
-        // ✅ PREVIEW OPEN
-        await OpenFile.open(file.path);
+      if (response.bodyBytes.isEmpty) {
+        throw Exception("Empty file received");
       }
+
+      final file = File(savePath);
+
+      await file.writeAsBytes(
+        response.bodyBytes,
+        flush: true,
+      );
+
+      await OpenFile.open(savePath);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            "✅ Downloaded & Preview Opened",
+          ),
+        ),
+      );
+
     } catch (e) {
+
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("❌ Download error")));
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            "❌ Download Failed",
+          ),
+        ),
+      );
+
     } finally {
-      if (!mounted) return;
-      setState(() => isDownloading = false);
+
+      if (mounted) {
+        setState(() => isDownloading = false);
+      }
     }
   }
-
   // ====================================================
   // 🧱 UI (UNCHANGED)
   // ====================================================
