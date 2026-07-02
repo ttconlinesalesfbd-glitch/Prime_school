@@ -20,22 +20,11 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 }
 
-// Future<void> main() async {
-//   WidgetsFlutterBinding.ensureInitialized();
-
-//   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
-//   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-//   await NotificationService.initialize();
-//   runApp(const MyApp());
-// }
-
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  try {
-    // ✅ Android only Firebase init
-    if (Platform.isAndroid) {
+  if (Platform.isAndroid) {
+    try {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
@@ -45,14 +34,9 @@ Future<void> main() async {
       );
 
       await NotificationService.initialize();
+    } catch (e) {
+      debugPrint("ANDROID FIREBASE ERROR: $e");
     }
-
-    // ✅ iOS ke liye temporarily skip
-    if (Platform.isIOS) {
-      debugPrint("🍎 iOS: Firebase skipped");
-    }
-  } catch (e) {
-    debugPrint("MAIN ERROR: $e");
   }
 
   runApp(const MyApp());
@@ -71,6 +55,7 @@ class MyApp extends StatelessWidget {
       supportedLocales: const [Locale('en')],
 
       home: const RootDecider(),
+      // home: LoginPage(),
     );
   }
 }
@@ -88,16 +73,6 @@ class _RootDeciderState extends State<RootDecider> {
 
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
-  // @override
-  // void initState() {
-  //   super.initState();
-  //   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-  //     debugPrint("🔔 Foreground message received");
-  //     NotificationService.display(message);
-  //   });
-  //   _initFirebaseMessaging();
-  //   _initApp();
-  // }
 
   @override
   void initState() {
@@ -121,27 +96,16 @@ class _RootDeciderState extends State<RootDecider> {
       NotificationSettings settings = await FirebaseMessaging.instance
           .requestPermission(alert: true, badge: true, sound: true);
 
-      debugPrint("🔔 Permission status: ${settings.authorizationStatus}");
+      debugPrint("Permission status: ${settings.authorizationStatus}");
 
-      String? fcmToken = await FirebaseMessaging.instance.getToken();
+      String? token = await FirebaseMessaging.instance.getToken();
 
-      debugPrint("🔥 FCM TOKEN = $fcmToken");
+      debugPrint("FCM TOKEN: $token");
     } catch (e) {
       debugPrint("FCM ERROR: $e");
     }
   }
-  // Future<void> _initFirebaseMessaging() async {
-  //   NotificationSettings settings = await FirebaseMessaging.instance
-  //       .requestPermission(alert: true, badge: true, sound: true);
 
-  //   debugPrint("🔔 Permission status: ${settings.authorizationStatus}");
-
-  //   String? fcmToken = await FirebaseMessaging.instance.getToken();
-  //   String? apnsToken = await FirebaseMessaging.instance.getAPNSToken();
-
-  //   debugPrint("🔥 FCM TOKEN = $fcmToken");
-  //   debugPrint("🍎 APNS TOKEN = $apnsToken");
-  // }
 
   Future<void> _initApp() async {
     try {

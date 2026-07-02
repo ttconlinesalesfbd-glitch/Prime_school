@@ -13,32 +13,31 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-@override
-void initState() {
-  super.initState();
+  @override
+  void initState() {
+    super.initState();
 
-  Future.microtask(() async {
-    await _checkForUpdate();
-  });
-}
-
-  Future<void> _checkForUpdate() async {
-  try {
-    if (Platform.isAndroid) {
-      final AppUpdateInfo updateInfo =
-          await InAppUpdate.checkForUpdate();
-
-      if (updateInfo.updateAvailability ==
-          UpdateAvailability.updateAvailable) {
-        await InAppUpdate.performImmediateUpdate();
-      }
-    }
-  } catch (e) {
-    debugPrint("In-app update error: $e");
+    Future.microtask(() async {
+      await _checkForUpdate();
+    });
   }
 
-  _goNext();
-}
+  Future<void> _checkForUpdate() async {
+    try {
+      if (Platform.isAndroid) {
+        final AppUpdateInfo updateInfo = await InAppUpdate.checkForUpdate();
+
+        if (updateInfo.updateAvailability ==
+            UpdateAvailability.updateAvailable) {
+          await InAppUpdate.performImmediateUpdate();
+        }
+      }
+    } catch (e) {
+      debugPrint("In-app update error: $e");
+    }
+
+    _goNext();
+  }
 
   void _goNext() {
     Future.delayed(const Duration(seconds: 2), () {
