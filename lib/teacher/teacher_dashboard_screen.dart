@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:pie_chart/pie_chart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:prime_school/api_service.dart';
 import 'package:prime_school/main.dart';
@@ -8,8 +9,6 @@ import 'package:prime_school/teacher/complaint_teacher/teacher_complaint_list_pa
 import 'package:prime_school/teacher/student_list.dart';
 import 'package:prime_school/teacher/teacher_recent_homework.dart';
 import 'package:prime_school/teacher/teacher_sidebar_menu.dart';
-
-import 'package:pie_chart/pie_chart.dart';
 
 class TeacherDashboardScreen extends StatefulWidget {
   const TeacherDashboardScreen({super.key});
@@ -32,9 +31,6 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen>
 
   Map<String, dynamic> attendance = {};
   List<Map<String, dynamic>> homeworks = [];
-    String selectedSession = "2024-25";
-
-  List<String> sessionList = ["2022-23", "2023-24", "2024-25"];
 
   @override
   void didChangeDependencies() {
@@ -158,71 +154,22 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen>
               ),
             ),
 
-            // 🔹 SESSION DROPDOWN (compact)
-            // PopupMenuButton<String>(
-            //   padding: EdgeInsets.zero,
-            //   onSelected: (value) async {
-            //     setState(() => selectedSession = value);
-
-            //     final prefs = await SharedPreferences.getInstance();
-            //     await prefs.setString("selected_session", value);
-
-            //     print("Session: $value");
-            //   },
-            //   itemBuilder: (context) {
-            //     return sessionList.map((session) {
-            //       return PopupMenuItem<String>(
-            //         value: session,
-            //         child: Text(
-            //           session,
-            //           style: const TextStyle(fontSize: 14), 
-            //         ),
-            //       );
-            //     }).toList();
-            //   },
-
-            //   child: Container(
-            //     padding: const EdgeInsets.symmetric(
-            //       horizontal: 12,
-            //       vertical: 6,
-            //     ), 
-            //     margin: const EdgeInsets.only(right: 8),
-            //     decoration: BoxDecoration(
-            //       color: Colors.white.withOpacity(0.18),
-            //       borderRadius: BorderRadius.circular(8),
-            //     ),
-            //     child: Row(
-            //       children: [
-            //         Text(
-            //           selectedSession,
-            //           style: const TextStyle(
-            //             color: Colors.white,
-            //             fontSize: 13, 
-            //             fontWeight: FontWeight.w500,
-            //           ),
-            //         ),
-            //         const SizedBox(width: 2),
-            //         const Icon(
-            //           Icons.arrow_drop_down,
-            //           color: Colors.white,
-            //           size: 20, 
-            //         ),
-            //       ],
-            //     ),
-            //   ),
-            // ),
-
             // 🔹 Profile Image
             teacherPhoto.isNotEmpty
                 ? CircleAvatar(
-                    backgroundImage: NetworkImage(teacherPhoto),
-                    radius: 14,
+                    radius: 16,
+                    backgroundColor: Colors.grey.shade200,
+                    backgroundImage: (teacherPhoto.trim().isNotEmpty)
+                        ? NetworkImage(teacherPhoto)
+                        : const AssetImage(AppAssets.logo_new) as ImageProvider,
+                    onBackgroundImageError: (_, __) {},
+                    child: (teacherPhoto.trim().isEmpty) ? null : null,
                   )
                 : const CircleAvatar(
-                    backgroundImage: AssetImage(AppAssets.logo_new),
-                    radius: 14,
+                    radius: 16,
+                    backgroundColor: Colors.grey,
+                    child: Icon(Icons.person, color: Colors.white, size: 16),
                   ),
-
             const SizedBox(width: 10),
           ],
         ),
