@@ -22,9 +22,6 @@ class _AttendanceAnalyticsPageState extends State<AttendanceAnalyticsPage> {
     fetchAttendanceAnalytics();
   }
 
-  // ====================================================
-  // 🎨 STATUS STYLE (SAFE)
-  // ====================================================
   Map<String, dynamic> getStatusStyle(String status) {
     switch (status.toLowerCase()) {
       case "present":
@@ -66,9 +63,6 @@ class _AttendanceAnalyticsPageState extends State<AttendanceAnalyticsPage> {
     }
   }
 
-  // ====================================================
-  // 🔐 SAFE FETCH (iOS + Android)
-  // ====================================================
   Future<void> fetchAttendanceAnalytics() async {
     if (!mounted) return;
 
@@ -80,7 +74,6 @@ class _AttendanceAnalyticsPageState extends State<AttendanceAnalyticsPage> {
         "/student/attendance/analytics",
       );
 
-      // AuthHelper already handles 401 + logout
       if (res == null) return;
 
       debugPrint("📥 ANALYTICS STATUS: ${res.statusCode}");
@@ -140,7 +133,6 @@ class _AttendanceAnalyticsPageState extends State<AttendanceAnalyticsPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ---------------- Today Status ----------------
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -195,7 +187,6 @@ class _AttendanceAnalyticsPageState extends State<AttendanceAnalyticsPage> {
 
                     const SizedBox(height: 20),
 
-                    // ---------------- Circular Indicator ----------------
                     Center(
                       child: CircularPercentIndicator(
                         radius: 90,
@@ -238,9 +229,6 @@ class _AttendanceAnalyticsPageState extends State<AttendanceAnalyticsPage> {
   }
 }
 
-// ====================================================
-// 📊 MONTHLY CHART (UNCHANGED UI)
-// ====================================================
 class AttendanceAnalyticsWidget extends StatelessWidget {
   final List<Map<String, dynamic>> monthlyData;
 

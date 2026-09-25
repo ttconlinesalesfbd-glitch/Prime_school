@@ -351,8 +351,7 @@ class _ListEventPageState extends State<ListEventPage> {
     if (isDownloading) return;
     isDownloading = true;
 
-    // ✅ URL now comes from ApiService
-   final fullUrl = ApiService.getFullUrl(filePath);
+    final fullUrl = filePath.toString();
 
     try {
       final fileName = fullUrl.split('/').last;

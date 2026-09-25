@@ -109,6 +109,7 @@ class _PaymentPageState extends State<PaymentPage> {
         await dio.download(url, filePath);
 
         if (!mounted) return;
+        await OpenFile.open(filePath);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Receipt saved to Downloads folder")),
         );

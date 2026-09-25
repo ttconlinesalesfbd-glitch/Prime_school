@@ -118,6 +118,27 @@
 //     }
 //   }
 
+//   // String _formatSchoolName(String name) {
+//   //   final parts = name.split(' ');
+
+//   //   if (parts.length <= 2) {
+//   //     return name;
+//   //   }
+//   //   final mid = (parts.length / 2).ceil();
+//   //   final firstLine = parts.sublist(0, mid).join(' ');
+//   //   final secondLine = parts.sublist(mid).join(' ');
+
+//   //   return '$firstLine\n$secondLine';
+//   // }
+
+//   // String _attendanceText() {
+//   //   final present = attendance['present'] ?? 0;
+//   //   final total = attendance['working_days'] ?? 0;
+
+//   //   if (total == 0) return "N/A";
+//   //   return "$present/$total";
+//   // }
+
 //   @override
 //   Widget build(BuildContext context) {
 //     return Scaffold(
@@ -834,7 +855,10 @@
 //     if (_isDownloading) return;
 //     _isDownloading = true;
 
-//     final fullUrl = ApiService.getFullUrl(filePath);
+//     // ✅ URL now comes from ApiService
+//     final fullUrl = filePath.startsWith('http')
+//         ? filePath
+//         : ApiService.homeworkAttachment(filePath);
 
 //     try {
 //       final fileName = fullUrl.split('/').last;

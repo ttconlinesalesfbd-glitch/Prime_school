@@ -1,4 +1,5 @@
 import 'package:prime_school/admin/admin_dashboard.dart';
+import 'package:prime_school/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -51,16 +52,18 @@ class MyApp extends StatelessWidget {
       navigatorKey: navigatorKey,
       navigatorObservers: [routeObserver],
       debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primary),
+      ),
 
       supportedLocales: const [Locale('en')],
 
       home: const RootDecider(),
-      // home: LoginPage(),
     );
   }
 }
 
-/// 🔥 ROOT DECIDER (single source of truth)
 class RootDecider extends StatefulWidget {
   const RootDecider({super.key});
 
@@ -72,7 +75,6 @@ class _RootDeciderState extends State<RootDecider> {
   Widget _screen = const SplashScreen();
 
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
-
 
   @override
   void initState() {
@@ -105,7 +107,6 @@ class _RootDeciderState extends State<RootDecider> {
       debugPrint("FCM ERROR: $e");
     }
   }
-
 
   Future<void> _initApp() async {
     try {

@@ -31,7 +31,6 @@ class _PaymentTeacherScreenState extends State<PaymentTeacherScreen> {
         "/teacher/payment", // already full URL
       );
 
-      // 🔐 If token invalid → auto logout already handled
       if (response == null) {
         if (!mounted) return;
         setState(() {

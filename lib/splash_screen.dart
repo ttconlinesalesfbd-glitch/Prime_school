@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:prime_school/login_page.dart';
 import 'package:flutter/material.dart';
 import 'package:prime_school/api_service.dart';

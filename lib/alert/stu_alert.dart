@@ -19,6 +19,7 @@ class _StudentAlertPageState extends State<StudentAlertPage> {
   bool hasLoadedData = false;
   List<Map<String, dynamic>> students = [];
   bool loadingStudents = false;
+  
   @override
   void initState() {
     super.initState();
@@ -31,7 +32,7 @@ class _StudentAlertPageState extends State<StudentAlertPage> {
     final res = await ApiService.post(
       context,
       "/teacher/student/list",
-      body: {"type": "all"},
+   body: {"type": "all"},
     );
 
     if (res != null && res.statusCode == 200) {
@@ -55,46 +56,29 @@ class _StudentAlertPageState extends State<StudentAlertPage> {
     setState(() => loadingStudents = false);
   }
 
- Future<void> sendAlert(List<int> studentIds) async {
-  setState(() => sending = true);
+  Future<void> sendAlert(List<int> studentIds) async {
+    setState(() => sending = true);
 
-  print("MESSAGE => ${messageCtrl.text.trim()}");
-  print("STUDENT IDS => $studentIds");
-
-  final body = {
-    "message": messageCtrl.text.trim(),
-    "student_ids": jsonEncode(studentIds),
-  };
-
-  print("REQUEST BODY => $body");
-
-  final res = await ApiService.post(
-    context,
-    "/teacher/student/alert",
-    body: body,
-  );
-
-  setState(() => sending = false);
-
-  print("STATUS CODE => ${res?.statusCode}");
-  print("RESPONSE => ${res?.body}");
-
-  if (res != null && res.statusCode == 200) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Alert sent successfully")),
+    final res = await ApiService.post(
+      context,
+      "/teacher/student/alert",
+      body: {"message": messageCtrl.text.trim(), "student_ids": studentIds},
     );
 
-    messageCtrl.clear();
-  } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          "Failed: ${res?.body ?? "No response"}",
-        ),
-      ),
-    );
+    setState(() => sending = false);
+
+    if (res != null && res.statusCode == 200) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Alert sent successfully")));
+      messageCtrl.clear();
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Failed to send alert")));
+    }
   }
-}
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

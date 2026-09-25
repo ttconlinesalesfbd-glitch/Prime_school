@@ -42,7 +42,7 @@ class _SchoolInfoPageState extends State<SchoolInfoPage> {
       }
 
       final data = jsonDecode(response.body);
-
+      debugPrint("📡 RESPONSE STATUS: ${response.body}");
       if (!mounted) return;
 
       setState(() {
@@ -78,7 +78,7 @@ class _SchoolInfoPageState extends State<SchoolInfoPage> {
 
       final normalizedUrl = qrCode.startsWith('http')
           ? qrCode
-          : '${ApiService.Url}/$qrCode';
+          : "${ApiService.Url}/$qrCode";
 
       final response = await http.get(Uri.parse(normalizedUrl));
       if (response.statusCode != 200 || response.bodyBytes.isEmpty) {
@@ -129,7 +129,7 @@ class _SchoolInfoPageState extends State<SchoolInfoPage> {
       return const AssetImage("assets/images/logo.png");
     }
     return NetworkImage(
-      url.startsWith('http') ? url : '${ApiService.Url}/$url',
+      url.startsWith('http') ? url : "${ApiService.Url}/$url",
     );
   }
 

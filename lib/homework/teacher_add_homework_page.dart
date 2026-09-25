@@ -1,9 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-
+import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:prime_school/api_service.dart';
 
@@ -20,14 +19,12 @@ class _TeacherAddHomeworkPageState extends State<TeacherAddHomeworkPage> {
   List sections = [];
   int? selectedClassId;
   int? selectedSectionId;
-
+  String? existingAttachment;
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   DateTime? assignDate;
   DateTime? submissionDate;
   File? selectedFile;
-  String? existingAttachment;
-
   bool isLoading = false;
   bool _isSubmitting = false;
 
@@ -86,41 +83,18 @@ class _TeacherAddHomeworkPageState extends State<TeacherAddHomeworkPage> {
       body: {'HomeworkId': homeworkId},
     );
 
-    print("🟢 EDIT STATUS: ${res?.statusCode}");
-    print("📦 EDIT BODY: ${res?.body}");
-
     if (res == null || res.statusCode != 200) return;
 
     final data = jsonDecode(res.body);
-
-    print("🧾 DECODED DATA: $data");
-
-    print("📎 ATTACHMENT RAW: ${data['Attachment']}");
-
+    debugPrint("HOMEWORK DETAIL RESPONSE: ${res.body}");
     if (!mounted) return;
 
     _titleController.text = data['HomeworkTitle'] ?? '';
-
     _descriptionController.text = data['Remark'] ?? '';
-
     assignDate = DateTime.tryParse(data['WorkDate'] ?? '');
-
     submissionDate = DateTime.tryParse(data['SubmissionDate'] ?? '');
 
-    // =========================
-    // 📎 ATTACHMENT
-    // =========================
-    if (data['Attachment'] != null &&
-        data['Attachment'].toString().isNotEmpty) {
-      existingAttachment = "${ApiService.fileBaseUrl}/${data['Attachment']}";
-
-      print(
-        "✅ FINAL ATTACHMENT URL: "
-        "$existingAttachment",
-      );
-    } else {
-      print("❌ ATTACHMENT NULL");
-    }
+    existingAttachment = data['Attachment'];
 
     selectedClassId = int.tryParse(data['Class'] ?? '');
 
@@ -129,13 +103,10 @@ class _TeacherAddHomeworkPageState extends State<TeacherAddHomeworkPage> {
     }
 
     selectedSectionId = int.tryParse(data['Section'] ?? '');
-
     setState(() {});
+    debugPrint("ATTACHMENT FROM API: ${data['Attachment']}");
   }
 
-  // ============================
-  // 📤 SUBMIT / UPDATE HOMEWORK
-  // ============================
   Future<void> submitHomework() async {
     if (_isSubmitting) return;
 
@@ -145,98 +116,152 @@ class _TeacherAddHomeworkPageState extends State<TeacherAddHomeworkPage> {
         submissionDate == null ||
         _titleController.text.trim().isEmpty ||
         _descriptionController.text.trim().isEmpty) {
+      debugPrint("❌ VALIDATION FAILED");
+
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text("Please fill all fields")));
+
       return;
     }
 
     _isSubmitting = true;
+
     setState(() => isLoading = true);
 
     try {
-      final token = await ApiService.getToken(); // already secure
+      final token = await ApiService.getToken();
 
       final isEdit = widget.homeworkToEdit != null;
+
       final endpoint = isEdit
           ? "/teacher/homework/update"
           : "/teacher/homework/store";
 
-      final request =
-          http.MultipartRequest(
-              'POST',
-              Uri.parse("${ApiService.baseUrl}$endpoint"),
-            )
-            ..headers['Authorization'] = 'Bearer $token'
-            ..headers['Accept'] = 'application/json'
-            ..fields['Class'] = selectedClassId.toString()
-            ..fields['Section'] = selectedSectionId.toString()
-            ..fields['Title'] = _titleController.text.trim()
-            ..fields['Description'] = _descriptionController.text.trim()
-            ..fields['AssignDate'] = DateFormat(
-              'yyyy-MM-dd',
-            ).format(assignDate!)
-            ..fields['SubmissionDate'] = DateFormat(
-              'yyyy-MM-dd',
-            ).format(submissionDate!);
+      debugPrint("========== HOMEWORK API DEBUG ==========");
+
+      debugPrint("📌 ENDPOINT => $endpoint");
+
+      debugPrint("📌 CLASS => $selectedClassId");
+
+      debugPrint("📌 SECTION => $selectedSectionId");
+
+      debugPrint("📌 TITLE => ${_titleController.text}");
+
+      debugPrint("📌 DESCRIPTION => ${_descriptionController.text}");
+
+      debugPrint(
+        "📌 ASSIGN DATE => ${DateFormat('yyyy-MM-dd').format(assignDate!)}",
+      );
+
+      debugPrint(
+        "📌 SUBMISSION DATE => ${DateFormat('yyyy-MM-dd').format(submissionDate!)}",
+      );
+
+      debugPrint("📌 FILE => ${selectedFile?.path}");
+
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse("${ApiService.baseUrl}$endpoint"),
+      );
+
+      request.headers['Authorization'] = 'Bearer $token';
+
+      request.headers['Accept'] = 'application/json';
+
+      request.fields['Class'] = selectedClassId.toString();
+
+      request.fields['Section'] = selectedSectionId.toString();
+
+      request.fields['Title'] = _titleController.text.trim();
+
+      request.fields['Description'] = _descriptionController.text.trim();
+
+      request.fields['AssignDate'] = DateFormat(
+        'yyyy-MM-dd',
+      ).format(assignDate!);
+
+      request.fields['SubmissionDate'] = DateFormat(
+        'yyyy-MM-dd',
+      ).format(submissionDate!);
 
       if (isEdit) {
         request.fields['HomeworkId'] = widget.homeworkToEdit!['id'].toString();
       }
 
+      debugPrint("📌 REQUEST FIELDS => ${request.fields}");
+
       if (selectedFile != null) {
+        debugPrint(
+          "📎 ATTACHMENT NAME => ${selectedFile!.path.split('/').last}",
+        );
+
         request.files.add(
           await http.MultipartFile.fromPath('Attachment', selectedFile!.path),
         );
+
+        debugPrint("✅ FILE ADDED");
+      } else {
+        debugPrint("⚠️ NO FILE SELECTED");
       }
 
-      final resp = await request.send();
-      final body = await resp.stream.bytesToString();
-      final decoded = jsonDecode(body);
+      final response = await request.send();
+
+      final responseBody = await response.stream.bytesToString();
+
+      debugPrint("📥 STATUS CODE => ${response.statusCode}");
+
+      debugPrint("📥 RESPONSE BODY => $responseBody");
+
+      debugPrint("========== API END ==========");
+
+      Map<String, dynamic> decoded = {};
+
+      try {
+        decoded = jsonDecode(responseBody);
+      } catch (e) {
+        debugPrint("❌ JSON DECODE ERROR => $e");
+      }
 
       if (!mounted) return;
 
-      if (resp.statusCode == 200) {
+      if (response.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(decoded['message'] ?? 'Success')),
+          SnackBar(content: Text(decoded['message'] ?? 'Homework Submitted')),
         );
+
         Navigator.pop(context, true);
       } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(decoded['message'] ?? 'Failed')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(decoded['message'] ?? 'Submission Failed')),
+        );
       }
-    } catch (e) {
+    } catch (e, stack) {
+      debugPrint("❌ EXCEPTION => $e");
+
+      debugPrint("❌ STACK => $stack");
+
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text("Error: $e")));
     } finally {
       _isSubmitting = false;
-      if (mounted) setState(() => isLoading = false);
+
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
     }
   }
 
-  Future<void> pickFile() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
+  Future<void> pickAttachment() async {
+    final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
     );
 
     if (result != null && result.files.single.path != null) {
-      final file = File(result.files.single.path!);
-
-      // 5 MB limit
-      final fileSize = await file.length();
-
-      if (fileSize > 5 * 1024 * 1024) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("File size must be less than 5 MB")),
-        );
-        return;
-      }
-
       setState(() {
-        selectedFile = file;
+        selectedFile = File(result.files.single.path!);
       });
     }
   }
@@ -244,6 +269,7 @@ class _TeacherAddHomeworkPageState extends State<TeacherAddHomeworkPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xffF5F7FB),
       appBar: AppBar(
         title: Text(
           widget.homeworkToEdit != null ? "Edit Homework" : "Add Homework",
@@ -261,43 +287,200 @@ class _TeacherAddHomeworkPageState extends State<TeacherAddHomeworkPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  DropdownButtonFormField<int>(
-                    decoration: const InputDecoration(labelText: "Class"),
-                    value: selectedClassId,
-                    items: classes.map((cls) {
-                      return DropdownMenuItem<int>(
-                        value: cls['id'],
-                        child: Text(cls['Class']),
-                      );
-                    }).toList(),
-                    onChanged: (val) {
-                      setState(() => selectedClassId = val);
-                      if (val != null) fetchSections(val);
-                    },
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          AppColors.primary,
+                          AppColors.primary.withOpacity(.8),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          height: 48,
+                          width: 48,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(.18),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.assignment_rounded,
+                            color: Colors.white,
+                          ),
+                        ),
+
+                        const SizedBox(width: 12),
+
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                widget.homeworkToEdit != null
+                                    ? "Edit Homework"
+                                    : "Create Homework",
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                ),
+                              ),
+
+                              const SizedBox(height: 4),
+
+                              const Text(
+                                "Fill all details before submitting.",
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 10),
-                  DropdownButtonFormField<int>(
-                    decoration: const InputDecoration(labelText: "Section"),
-                    value: selectedSectionId,
-                    items: sections.map((sec) {
-                      return DropdownMenuItem<int>(
-                        value: sec['id'],
-                        child: Text(sec['SectionName']),
-                      );
-                    }).toList(),
-                    onChanged: (val) => setState(() => selectedSectionId = val),
+
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<int>(
+                          value: selectedClassId,
+                          isExpanded: true,
+                          borderRadius: BorderRadius.circular(14),
+                          icon: const Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            color: AppColors.primary,
+                          ),
+                          decoration: InputDecoration(
+                            labelText: "Class",
+                            prefixIcon: const Icon(
+                              Icons.school_outlined,
+                              color: AppColors.primary,
+                            ),
+                            filled: true,
+                            fillColor: Colors.white,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 16,
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              borderSide: const BorderSide(
+                                color: AppColors.primary,
+                                width: 1.5,
+                              ),
+                            ),
+                          ),
+                          items: classes.map((cls) {
+                            return DropdownMenuItem<int>(
+                              value: cls['id'],
+                              child: Text(
+                                cls['Class'],
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (val) {
+                            setState(() => selectedClassId = val);
+                            if (val != null) fetchSections(val);
+                          },
+                        ),
+                      ),
+
+                      const SizedBox(width: 12),
+
+                      Expanded(
+                        child: DropdownButtonFormField<int>(
+                          value: selectedSectionId,
+                          isExpanded: true,
+                          borderRadius: BorderRadius.circular(14),
+                          icon: const Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            color: AppColors.primary,
+                          ),
+                          decoration: InputDecoration(
+                            labelText: "Section",
+                            prefixIcon: const Icon(
+                              Icons.groups_rounded,
+                              color: AppColors.primary,
+                            ),
+                            filled: true,
+                            fillColor: Colors.white,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 16,
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              borderSide: const BorderSide(
+                                color: AppColors.primary,
+                                width: 1.5,
+                              ),
+                            ),
+                          ),
+                          items: sections.map((sec) {
+                            return DropdownMenuItem<int>(
+                              value: sec['id'],
+                              child: Text(
+                                sec['SectionName'],
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (val) =>
+                              setState(() => selectedSectionId = val),
+                        ),
+                      ),
+                    ],
                   ),
+
                   const SizedBox(height: 10),
                   TextFormField(
                     controller: _titleController,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: "Homework Title",
+                      prefixIcon: const Icon(Icons.title),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide.none,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 10),
                   TextFormField(
                     controller: _descriptionController,
-                    decoration: const InputDecoration(labelText: "Description"),
+                    decoration: InputDecoration(
+                      labelText: "Description",
+                      prefixIcon: Icon(Icons.edit_note),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
                     maxLines: 6,
                   ),
                   const SizedBox(height: 10),
@@ -328,16 +511,21 @@ class _TeacherAddHomeworkPageState extends State<TeacherAddHomeworkPage> {
                           }
                         },
                         child: Container(
-                          width: double.infinity,
                           padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
                             vertical: 14,
-                            horizontal: 12,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.grey),
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(.05),
+                                blurRadius: 8,
+                              ),
+                            ],
                           ),
+
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -389,16 +577,21 @@ class _TeacherAddHomeworkPageState extends State<TeacherAddHomeworkPage> {
                           }
                         },
                         child: Container(
-                          width: double.infinity,
                           padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
                             vertical: 14,
-                            horizontal: 12,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.grey),
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(.05),
+                                blurRadius: 8,
+                              ),
+                            ],
                           ),
+
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -423,6 +616,7 @@ class _TeacherAddHomeworkPageState extends State<TeacherAddHomeworkPage> {
                     ],
                   ),
                   const SizedBox(height: 10),
+
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -434,97 +628,121 @@ class _TeacherAddHomeworkPageState extends State<TeacherAddHomeworkPage> {
                           color: Colors.black54,
                         ),
                       ),
-                      const SizedBox(height: 5),
-                      (selectedFile == null && existingAttachment == null)
-                          ? ElevatedButton.icon(
-                              icon: const Icon(
-                                Icons.attach_file,
-                                color: AppColors.primary,
-                              ),
+                      const SizedBox(height: 8),
 
-                              label: const Text(
-                                "Choose File",
-                                style: TextStyle(color: AppColors.primary),
-                              ),
-
-                              onPressed: pickFile,
-                            )
-                          : Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 10,
-                              ),
-
-                              decoration: BoxDecoration(
-                                border: Border.all(color: AppColors.primary),
-
-                                borderRadius: BorderRadius.circular(10),
-
-                                color: AppColors.primary.withOpacity(0.05),
-                              ),
-
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    ((selectedFile?.path ??
-                                                existingAttachment ??
-                                                "")
-                                            .toLowerCase()
-                                            .endsWith(".pdf"))
-                                        ? Icons.picture_as_pdf
-                                        : Icons.image,
-
-                                    color: AppColors.primary,
-                                  ),
-
-                                  const SizedBox(width: 8),
-
-                                  Expanded(
-                                    child: Text(
-                                      selectedFile != null
-                                          ? selectedFile!.path.split('/').last
-                                          : existingAttachment!.split('/').last,
-
-                                      style: const TextStyle(
+                      GestureDetector(
+                        onTap: pickAttachment,
+                        child: Container(
+                          height: 100,
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppColors.primary),
+                            color: AppColors.primary.withOpacity(0.05),
+                          ),
+                          child: Row(
+                            children: [
+                              // LEFT SIDE TEXT
+                              Expanded(
+                                child: Row(
+                                  children: const [
+                                    Icon(
+                                      Icons.cloud_upload_outlined,
+                                      color: AppColors.primary,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      "Tap to select attachment",
+                                      style: TextStyle(
                                         fontWeight: FontWeight.w500,
+                                        color: Colors.black87,
                                       ),
-
-                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                  ),
-
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.close,
-                                      color: Colors.red,
-                                    ),
-
-                                    onPressed: () {
-                                      setState(() {
-                                        selectedFile = null;
-                                        existingAttachment = null;
-                                      });
-                                    },
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
+
+                              // RIGHT SIDE IMAGE PREVIEW
+                              if (selectedFile != null ||
+                                  existingAttachment != null)
+                                Stack(
+                                  children: [
+                                    Container(
+                                      width: 100,
+                                      height: 100,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: Colors.grey.shade300,
+                                        ),
+                                      ),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: selectedFile != null
+                                            ? Image.file(
+                                                selectedFile!,
+                                                fit: BoxFit.cover,
+                                              )
+                                            : Image.network(
+                                                existingAttachment!,
+                                                fit: BoxFit.cover,
+                                              ),
+                                      ),
+                                    ),
+
+                                    // REMOVE BUTTON
+                                    Positioned(
+                                      right: -5,
+                                      top: -5,
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          setState(() {
+                                            selectedFile = null;
+                                            existingAttachment = null;
+                                          });
+                                        },
+                                        child: const CircleAvatar(
+                                          radius: 12,
+                                          backgroundColor: Colors.red,
+                                          child: Icon(
+                                            Icons.close,
+                                            size: 14,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 20),
                   SizedBox(
+                    height: 52,
                     width: double.infinity,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
+                    child: ElevatedButton.icon(
+                      icon: const Icon(
+                        Icons.check_circle_outline,
+                        color: Colors.white,
                       ),
-                      onPressed: submitHomework,
-                      child: Text(
+                      label: Text(
                         widget.homeworkToEdit != null
                             ? "Update Homework"
                             : "Submit Homework",
                         style: const TextStyle(color: Colors.white),
                       ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      onPressed: submitHomework,
                     ),
                   ),
                 ],
